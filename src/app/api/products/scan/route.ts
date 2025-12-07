@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { image } = await request.json()
+    const { image, name: manualName, nutrition: manualNutrition } = await request.json()
 
     if (!image) {
       console.error("No image provided")
@@ -124,11 +124,13 @@ export async function POST(request: Request) {
 
     console.log("Image URL:", imageUrl)
 
-    // 商品情報を簡易的に抽出（後でAIで改善可能）
-    const productName = extractProductName(detectedText)
-    const nutritionInfo = extractNutritionInfo(detectedText)
+    // 商品情報を簡易的に抽出（手動入力があれば優先）
+    const productName = manualName || extractProductName(detectedText)
+    const nutritionInfo = manualNutrition && Object.keys(manualNutrition).length > 0
+      ? manualNutrition
+      : extractNutritionInfo(detectedText)
 
-    console.log("Extracted product name:", productName)
+    console.log("Product name:", productName, "(manual:", !!manualName, ")")
     console.log("Extracted nutrition:", nutritionInfo)
 
     // productsテーブルに保存
