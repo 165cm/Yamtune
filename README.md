@@ -121,9 +121,18 @@ src/
 - [x] 認証機能（Login/Signup）
 - [x] 基本的な状態管理（Zustand）
 
-### Phase 2: Onboarding & 家族管理 🚧
-- [ ] Onboarding実装
-- [ ] 家族・メンバー管理機能
+### Phase 2: Onboarding & 家族管理 ✅
+- [x] Onboarding実装（5ステップのフロー）
+  - [x] ウェルカム画面
+  - [x] 商品スキャン体験（モックデモ）
+  - [x] AIレシピ生成体験（モックデモ）
+  - [x] 家族情報入力
+  - [x] 子供情報入力（好き嫌い登録）
+- [x] 家族・メンバー管理機能
+  - [x] 家族管理API（作成・取得）
+  - [x] メンバー管理API（作成・更新・削除）
+  - [x] 好き嫌い管理API
+  - [x] 家族管理画面
 
 ### Phase 3: 商品スキャン 📋
 - [ ] Google Cloud Vision OCR実装
