@@ -138,6 +138,7 @@ export async function POST(request: Request) {
         name: productName,
         image_url: imageUrl,
         ocr_text: detectedText,
+        nutrition: nutritionInfo, // NOT NULL制約のため必須
         nutrition_per_100g: nutritionInfo,
       } as any)
       .select()
