@@ -52,59 +52,79 @@ export async function POST(request: Request) {
 
     console.log("Upload successful:", fileName)
 
-    // Google Cloud Vision APIでOCR実行
-    const visionApiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY
-    if (!visionApiKey) {
-      console.error("Vision API key not configured")
+    // OpenAI GPT-4o-mini VisionでAI解析
+    const openaiApiKey = process.env.OPENAI_API_KEY
+    if (!openaiApiKey) {
+      console.error("OpenAI API key not configured")
       return NextResponse.json(
-        { error: "Vision API key not configured" },
+        { error: "OpenAI API key not configured" },
         { status: 500 }
       )
     }
 
-    console.log("Calling Vision API...")
+    console.log("Calling OpenAI Vision API...")
 
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
+    const openaiResponse = await fetch(
+      "https://api.openai.com/v1/chat/completions",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiApiKey}`,
         },
         body: JSON.stringify({
-          requests: [
+          model: "gpt-4o-mini",
+          messages: [
             {
-              image: {
-                content: base64Data,
-              },
-              features: [
+              role: "user",
+              content: [
                 {
-                  type: "TEXT_DETECTION",
-                  maxResults: 1,
+                  type: "text",
+                  text: `この画像は食品パッケージの栄養成分表示です。以下の情報をJSON形式で抽出してください：
+
+1. product_name: 商品名（日本語または英語）
+2. category: 商品カテゴリ（野菜、果物、肉、魚、乳製品、加工食品、飲料、菓子、調味料、その他のいずれか）
+3. nutrition_per_100g: 100gあたりの栄養成分（以下のキーを使用）
+   - energy_kcal: エネルギー（kcal）
+   - protein_g: たんぱく質（g）
+   - fat_g: 脂質（g）
+   - carbohydrate_g: 炭水化物（g）
+   - salt_g: 食塩相当量（g）
+
+値が見つからない場合は省略してください。必ずJSONのみを返してください。`,
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:image/jpeg;base64,${base64Data}`,
+                  },
                 },
               ],
             },
           ],
+          response_format: { type: "json_object" },
+          max_tokens: 1000,
         }),
       }
     )
 
-    if (!visionResponse.ok) {
-      const errorText = await visionResponse.text()
-      console.error("Vision API error:", errorText)
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text()
+      console.error("OpenAI API error:", errorText)
       return NextResponse.json(
         { error: `Failed to process image: ${errorText}` },
         { status: 500 }
       )
     }
 
-    const visionData = await visionResponse.json()
-    console.log("Vision API response:", JSON.stringify(visionData).substring(0, 200))
+    const openaiData = await openaiResponse.json()
+    console.log("OpenAI API response:", JSON.stringify(openaiData).substring(0, 300))
 
-    const detectedText =
-      visionData.responses[0]?.fullTextAnnotation?.text || ""
+    const aiResult = JSON.parse(
+      openaiData.choices[0]?.message?.content || "{}"
+    )
 
-    console.log("Detected text length:", detectedText.length)
+    console.log("AI extracted data:", aiResult)
 
     // 画像の署名付きURLを取得（プライベートバケット用）
     const { data: signedUrlData, error: urlError } = await supabase.storage
@@ -124,13 +144,15 @@ export async function POST(request: Request) {
 
     console.log("Image URL:", imageUrl)
 
-    // 商品情報を簡易的に抽出（手動入力があれば優先）
-    const productName = manualName || extractProductName(detectedText)
+    // AI抽出結果を使用（手動入力があれば優先）
+    const productName = manualName || aiResult.product_name || "商品名不明"
+    const category = aiResult.category || "その他"
     const nutritionInfo = manualNutrition && Object.keys(manualNutrition).length > 0
       ? manualNutrition
-      : extractNutritionInfo(detectedText)
+      : aiResult.nutrition_per_100g || {}
 
     console.log("Product name:", productName, "(manual:", !!manualName, ")")
+    console.log("Category:", category)
     console.log("Extracted nutrition:", nutritionInfo)
 
     // productsテーブルに保存
@@ -138,8 +160,8 @@ export async function POST(request: Request) {
       .from("products")
       .insert({
         name: productName,
+        category: category,
         image_url: imageUrl,
-        ocr_text: detectedText,
         nutrition: nutritionInfo, // NOT NULL制約のため必須
         nutrition_per_100g: nutritionInfo,
       } as any)
@@ -173,7 +195,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       product,
-      detectedText,
     })
   } catch (error) {
     console.error("Scan error:", error)
@@ -183,53 +204,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
-
-// 商品名を抽出（簡易版）
-function extractProductName(text: string): string {
-  const lines = text.split("\n").filter((line) => line.trim().length > 0)
-  // 最初の数行から商品名らしいものを取得
-  for (const line of lines.slice(0, 5)) {
-    if (line.length > 3 && line.length < 50) {
-      return line.trim()
-    }
-  }
-  return lines[0]?.trim() || "商品名不明"
-}
-
-// 栄養情報を抽出（簡易版）
-function extractNutritionInfo(text: string): Record<string, number> {
-  const nutrition: Record<string, number> = {}
-
-  // エネルギー（kcal）
-  const energyMatch = text.match(/エネルギー[:\s]*(\d+\.?\d*)\s*kcal/i)
-  if (energyMatch) {
-    nutrition.energy_kcal = parseFloat(energyMatch[1])
-  }
-
-  // たんぱく質（g）
-  const proteinMatch = text.match(/たんぱく質[:\s]*(\d+\.?\d*)\s*g/i)
-  if (proteinMatch) {
-    nutrition.protein_g = parseFloat(proteinMatch[1])
-  }
-
-  // 脂質（g）
-  const fatMatch = text.match(/脂質[:\s]*(\d+\.?\d*)\s*g/i)
-  if (fatMatch) {
-    nutrition.fat_g = parseFloat(fatMatch[1])
-  }
-
-  // 炭水化物（g）
-  const carbMatch = text.match(/炭水化物[:\s]*(\d+\.?\d*)\s*g/i)
-  if (carbMatch) {
-    nutrition.carbohydrate_g = parseFloat(carbMatch[1])
-  }
-
-  // 食塩相当量（g）
-  const saltMatch = text.match(/食塩相当量[:\s]*(\d+\.?\d*)\s*g/i)
-  if (saltMatch) {
-    nutrition.salt_g = parseFloat(saltMatch[1])
-  }
-
-  return nutrition
 }
