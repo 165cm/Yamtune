@@ -5,7 +5,6 @@ import { Progress } from "@/components/ui/progress"
 import WelcomeStep from "@/components/features/onboarding/welcome-step"
 import ScanDemoStep from "@/components/features/onboarding/scan-demo-step"
 import RecipeDemoStep from "@/components/features/onboarding/recipe-demo-step"
-import FamilyInfoStep from "@/components/features/onboarding/family-info-step"
 import MemberInfoStep from "@/components/features/onboarding/member-info-step"
 
 export default function OnboardingPage() {
@@ -20,8 +19,6 @@ export default function OnboardingPage() {
       case 3:
         return <RecipeDemoStep />
       case 4:
-        return <FamilyInfoStep />
-      case 5:
         return <MemberInfoStep />
       default:
         return <WelcomeStep />

@@ -25,9 +25,9 @@ interface OnboardingState {
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
   currentStep: 1,
-  totalSteps: 5,
+  totalSteps: 4,
   isCompleted: false,
-  familyData: {},
+  familyData: { name: "マイファミリー" },
   memberData: {
     likes: [],
     dislikes: [],
