@@ -79,7 +79,7 @@ export default function ScanDemoStep() {
               className="w-full h-12"
               onClick={nextStep}
             >
-              次へ：レシピを生成
+              次へ：お子様情報を入力
             </Button>
             <Button
               variant="outline"
