@@ -11,21 +11,27 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser()
 
     if (!user) {
+      console.error("Unauthorized: No user found")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { image } = await request.json()
 
     if (!image) {
+      console.error("No image provided")
       return NextResponse.json(
         { error: "Image is required" },
         { status: 400 }
       )
     }
 
+    console.log("Starting image processing for user:", user.id)
+
     // Base64画像をBufferに変換
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "")
     const buffer = Buffer.from(base64Data, "base64")
+
+    console.log("Image buffer size:", buffer.length)
 
     // Supabase Storageにアップロード
     const fileName = `${user.id}/${Date.now()}.jpg`
@@ -37,21 +43,26 @@ export async function POST(request: Request) {
       })
 
     if (uploadError) {
-      console.error("Upload error:", uploadError)
+      console.error("Upload error details:", JSON.stringify(uploadError))
       return NextResponse.json(
-        { error: "Failed to upload image" },
+        { error: `Failed to upload image: ${uploadError.message}` },
         { status: 500 }
       )
     }
 
+    console.log("Upload successful:", fileName)
+
     // Google Cloud Vision APIでOCR実行
     const visionApiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY
     if (!visionApiKey) {
+      console.error("Vision API key not configured")
       return NextResponse.json(
         { error: "Vision API key not configured" },
         { status: 500 }
       )
     }
+
+    console.log("Calling Vision API...")
 
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
@@ -79,32 +90,53 @@ export async function POST(request: Request) {
     )
 
     if (!visionResponse.ok) {
-      console.error("Vision API error:", await visionResponse.text())
+      const errorText = await visionResponse.text()
+      console.error("Vision API error:", errorText)
       return NextResponse.json(
-        { error: "Failed to process image" },
+        { error: `Failed to process image: ${errorText}` },
         { status: 500 }
       )
     }
 
     const visionData = await visionResponse.json()
+    console.log("Vision API response:", JSON.stringify(visionData).substring(0, 200))
+
     const detectedText =
       visionData.responses[0]?.fullTextAnnotation?.text || ""
 
-    // 画像URLを取得
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("product-images").getPublicUrl(fileName)
+    console.log("Detected text length:", detectedText.length)
+
+    // 画像の署名付きURLを取得（プライベートバケット用）
+    const { data: signedUrlData, error: urlError } = await supabase.storage
+      .from("product-images")
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365) // 1年間有効
+
+    if (urlError) {
+      console.error("Signed URL error:", urlError)
+      // 公開URLで試す
+      const { data: { publicUrl } } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName)
+      var imageUrl = publicUrl
+    } else {
+      var imageUrl = signedUrlData.signedUrl
+    }
+
+    console.log("Image URL:", imageUrl)
 
     // 商品情報を簡易的に抽出（後でAIで改善可能）
     const productName = extractProductName(detectedText)
     const nutritionInfo = extractNutritionInfo(detectedText)
+
+    console.log("Extracted product name:", productName)
+    console.log("Extracted nutrition:", nutritionInfo)
 
     // productsテーブルに保存
     const { data: product, error: productError } = await (supabase as any)
       .from("products")
       .insert({
         name: productName,
-        image_url: publicUrl,
+        image_url: imageUrl,
         ocr_text: detectedText,
         nutrition_per_100g: nutritionInfo,
       } as any)
@@ -112,12 +144,14 @@ export async function POST(request: Request) {
       .single()
 
     if (productError) {
-      console.error("Product insert error:", productError)
+      console.error("Product insert error:", JSON.stringify(productError))
       return NextResponse.json(
-        { error: "Failed to save product" },
+        { error: `Failed to save product: ${productError.message}` },
         { status: 500 }
       )
     }
+
+    console.log("Product saved successfully:", product.id)
 
     // user_productsテーブルに保存
     const { error: userProductError } = await (supabase as any)
@@ -128,8 +162,11 @@ export async function POST(request: Request) {
       } as any)
 
     if (userProductError) {
-      console.error("User product insert error:", userProductError)
+      console.error("User product insert error:", JSON.stringify(userProductError))
+      // ユーザー商品の紐付けエラーは致命的ではないので続行
     }
+
+    console.log("Scan completed successfully")
 
     return NextResponse.json({
       product,
@@ -137,8 +174,9 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("Scan error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: `Internal server error: ${errorMessage}` },
       { status: 500 }
     )
   }

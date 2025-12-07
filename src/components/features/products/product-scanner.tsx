@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Camera, Upload, X, Loader2 } from "lucide-react"
 
 interface ProductScannerProps {
@@ -10,13 +10,13 @@ interface ProductScannerProps {
 }
 
 export default function ProductScanner({ onScanComplete }: ProductScannerProps) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [nutritionImage, setNutritionImage] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const nutritionInputRef = useRef<HTMLInputElement>(null)
+  const nutritionCameraRef = useRef<HTMLInputElement>(null)
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNutritionImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -28,14 +28,17 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setSelectedImage(reader.result as string)
+      setNutritionImage(reader.result as string)
       setError(null)
     }
     reader.readAsDataURL(file)
   }
 
   const handleScan = async () => {
-    if (!selectedImage) return
+    if (!nutritionImage) {
+      setError("栄養表示の画像を選択してください")
+      return
+    }
 
     setIsScanning(true)
     setError(null)
@@ -47,17 +50,18 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          image: selectedImage,
+          image: nutritionImage,
         }),
       })
 
       if (!response.ok) {
-        throw new Error("スキャンに失敗しました")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "スキャンに失敗しました")
       }
 
       const data = await response.json()
       onScanComplete(data.product)
-      setSelectedImage(null)
+      setNutritionImage(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました")
     } finally {
@@ -66,18 +70,21 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
   }
 
   const handleCancel = () => {
-    setSelectedImage(null)
+    setNutritionImage(null)
     setError(null)
   }
 
-  if (selectedImage) {
+  if (nutritionImage) {
     return (
       <Card>
-        <CardContent className="p-6 space-y-4">
+        <CardHeader>
+          <CardTitle className="text-lg">栄養表示をスキャン</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="relative">
             <img
-              src={selectedImage}
-              alt="選択された画像"
+              src={nutritionImage}
+              alt="栄養表示画像"
               className="w-full h-auto rounded-lg"
             />
             <button
@@ -126,28 +133,34 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
 
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardHeader>
+        <CardTitle className="text-lg">栄養表示を撮影</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          商品パッケージの栄養成分表示部分を撮影してください
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <input
-            ref={cameraInputRef}
+            ref={nutritionCameraRef}
             type="file"
             accept="image/*"
             capture="environment"
-            onChange={handleImageSelect}
+            onChange={handleNutritionImageSelect}
             className="hidden"
           />
           <input
-            ref={fileInputRef}
+            ref={nutritionInputRef}
             type="file"
             accept="image/*"
-            onChange={handleImageSelect}
+            onChange={handleNutritionImageSelect}
             className="hidden"
           />
 
           <Button
             variant="outline"
             className="h-32 flex-col gap-2"
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={() => nutritionCameraRef.current?.click()}
           >
             <Camera className="w-8 h-8" />
             <span className="text-sm">カメラで撮影</span>
@@ -156,7 +169,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
           <Button
             variant="outline"
             className="h-32 flex-col gap-2"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => nutritionInputRef.current?.click()}
           >
             <Upload className="w-8 h-8" />
             <span className="text-sm">ファイルから選択</span>
@@ -164,7 +177,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
         </div>
 
         {error && (
-          <div className="mt-4 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
             {error}
           </div>
         )}
