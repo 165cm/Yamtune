@@ -13,7 +13,7 @@ import { Baby, Plus, X } from "lucide-react"
 
 export default function MemberInfoStep() {
   const router = useRouter()
-  const { prevStep, memberData, setMemberData, familyData, completeOnboarding } = useOnboardingStore()
+  const { nextStep, prevStep, memberData, setMemberData, familyData, completeOnboarding } = useOnboardingStore()
   const { user } = useAuthStore()
   const { setCurrentFamily, setMembers, setSelectedMember } = useFamilyStore()
 
@@ -101,12 +101,9 @@ export default function MemberInfoStep() {
         )
       }
 
-      // オンボーディング完了
+      // メンバーデータを保存して次のステップへ
       setMemberData({ name, birthDate, dislikes })
-      completeOnboarding()
-
-      // ホームへリダイレクト
-      router.push("/home")
+      nextStep()
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました")
       setIsSubmitting(false)
@@ -215,7 +212,7 @@ export default function MemberInfoStep() {
             onClick={handleComplete}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "登録中..." : "登録完了"}
+            {isSubmitting ? "登録中..." : "次へ：レシピ提案を見る"}
           </Button>
           <Button
             variant="outline"

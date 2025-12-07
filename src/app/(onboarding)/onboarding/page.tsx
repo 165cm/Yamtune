@@ -17,9 +17,9 @@ export default function OnboardingPage() {
       case 2:
         return <ScanDemoStep />
       case 3:
-        return <RecipeDemoStep />
-      case 4:
         return <MemberInfoStep />
+      case 4:
+        return <RecipeDemoStep />
       default:
         return <WelcomeStep />
     }

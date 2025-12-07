@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useOnboardingStore } from "@/stores/onboarding-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Sparkles, Clock, Users as UsersIcon } from "lucide-react"
 
 export default function RecipeDemoStep() {
-  const { nextStep, prevStep } = useOnboardingStore()
+  const router = useRouter()
+  const { prevStep, completeOnboarding } = useOnboardingStore()
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGenerated, setIsGenerated] = useState(false)
 
@@ -18,6 +20,11 @@ export default function RecipeDemoStep() {
       setIsGenerating(false)
       setIsGenerated(true)
     }, 3000)
+  }
+
+  const handleComplete = () => {
+    completeOnboarding()
+    router.push("/home")
   }
 
   return (
@@ -102,9 +109,9 @@ export default function RecipeDemoStep() {
           <div className="space-y-3">
             <Button
               className="w-full h-12"
-              onClick={nextStep}
+              onClick={handleComplete}
             >
-              次へ：家族情報を入力
+              Yamtuneを始める
             </Button>
             <Button
               variant="outline"
