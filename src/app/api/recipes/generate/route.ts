@@ -297,7 +297,7 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
     })
 
     // 完全なレシピデータを取得
-    const { data: fullRecipe } = await (supabase as any)
+    const { data: fullRecipe, error: fullRecipeError } = await (supabase as any)
       .from("recipes")
       .select(
         `
@@ -308,6 +308,32 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
       )
       .eq("id", recipe.id)
       .single()
+
+    // fullRecipeがnullの場合のエラーハンドリング
+    if (fullRecipeError || !fullRecipe) {
+      console.error("Failed to fetch full recipe:", fullRecipeError)
+      // フォールバック: 最初のinsertで取得したrecipeデータを使用
+      return NextResponse.json({
+        recipe: {
+          ...recipe,
+          recipe_ingredients: recipeData.ingredients?.map((ingredient: any, index: number) => ({
+            id: `temp-${index}`,
+            recipe_id: recipe.id,
+            name: ingredient.name,
+            amount: ingredient.amount,
+            notes: ingredient.notes || null,
+            order_index: index,
+          })) || [],
+          recipe_steps: recipeData.steps?.map((step: string, index: number) => ({
+            id: `temp-${index}`,
+            recipe_id: recipe.id,
+            step_number: index + 1,
+            description: step,
+          })) || [],
+        },
+        tips: recipeData.tips,
+      })
+    }
 
     // Kling AIで料理画像を生成（バックグラウンドで非同期実行）
     if (klingAI.isConfigured()) {

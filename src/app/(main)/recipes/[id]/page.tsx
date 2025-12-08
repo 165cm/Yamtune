@@ -23,10 +23,10 @@ interface Recipe {
   title: string
   description: string
   servings: number
-  cooking_time_minutes: number
+  cooking_time: number
   difficulty: string
   image_url?: string
-  total_nutrition: {
+  nutrition: {
     energy_kcal?: number
     protein_g?: number
     fat_g?: number
@@ -37,12 +37,11 @@ interface Recipe {
   ingredients: Array<{
     name: string
     amount: string
-    category?: string
+    notes?: string
   }>
   steps: Array<{
     step_number: number
-    instruction: string
-    time_minutes?: number
+    description: string
   }>
   isFavorite: boolean
 }
@@ -176,10 +175,12 @@ export default function RecipeDetailPage({
               <Users className="w-3 h-3" />
               {recipe.servings}人分
             </Badge>
-            <Badge variant="outline" className="gap-1">
-              <Clock className="w-3 h-3" />
-              {recipe.cooking_time_minutes}分
-            </Badge>
+            {recipe.cooking_time && (
+              <Badge variant="outline" className="gap-1">
+                <Clock className="w-3 h-3" />
+                {recipe.cooking_time}分
+              </Badge>
+            )}
             <Badge className={difficultyColor}>{recipe.difficulty}</Badge>
           </div>
         </CardHeader>
@@ -199,53 +200,53 @@ export default function RecipeDetailPage({
       )}
 
       {/* 栄養情報 */}
-      {recipe.total_nutrition && (
+      {recipe.nutrition && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg">栄養情報（1人分）</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {recipe.total_nutrition.energy_kcal !== undefined && (
+              {recipe.nutrition.energy_kcal !== undefined && (
                 <div className="flex flex-col items-center p-3 bg-orange-50 rounded-lg">
                   <Flame className="w-5 h-5 text-orange-600 mb-1" />
                   <div className="text-2xl font-bold text-orange-600">
-                    {Math.round(recipe.total_nutrition.energy_kcal / recipe.servings)}
+                    {Math.round(recipe.nutrition.energy_kcal / recipe.servings)}
                   </div>
                   <div className="text-xs text-muted-foreground">kcal</div>
                 </div>
               )}
-              {recipe.total_nutrition.protein_g !== undefined && (
+              {recipe.nutrition.protein_g !== undefined && (
                 <div className="flex flex-col items-center p-3 bg-red-50 rounded-lg">
                   <Beef className="w-5 h-5 text-red-600 mb-1" />
                   <div className="text-2xl font-bold text-red-600">
-                    {(recipe.total_nutrition.protein_g / recipe.servings).toFixed(1)}
+                    {(recipe.nutrition.protein_g / recipe.servings).toFixed(1)}
                   </div>
                   <div className="text-xs text-muted-foreground">g たんぱく質</div>
                 </div>
               )}
-              {recipe.total_nutrition.fat_g !== undefined && (
+              {recipe.nutrition.fat_g !== undefined && (
                 <div className="flex flex-col items-center p-3 bg-yellow-50 rounded-lg">
                   <Droplet className="w-5 h-5 text-yellow-600 mb-1" />
                   <div className="text-2xl font-bold text-yellow-600">
-                    {(recipe.total_nutrition.fat_g / recipe.servings).toFixed(1)}
+                    {(recipe.nutrition.fat_g / recipe.servings).toFixed(1)}
                   </div>
                   <div className="text-xs text-muted-foreground">g 脂質</div>
                 </div>
               )}
-              {recipe.total_nutrition.carbohydrate_g !== undefined && (
+              {recipe.nutrition.carbohydrate_g !== undefined && (
                 <div className="flex flex-col items-center p-3 bg-amber-50 rounded-lg">
                   <Wheat className="w-5 h-5 text-amber-600 mb-1" />
                   <div className="text-2xl font-bold text-amber-600">
-                    {(recipe.total_nutrition.carbohydrate_g / recipe.servings).toFixed(1)}
+                    {(recipe.nutrition.carbohydrate_g / recipe.servings).toFixed(1)}
                   </div>
                   <div className="text-xs text-muted-foreground">g 炭水化物</div>
                 </div>
               )}
-              {recipe.total_nutrition.salt_g !== undefined && (
+              {recipe.nutrition.salt_g !== undefined && (
                 <div className="flex flex-col items-center p-3 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
-                    {(recipe.total_nutrition.salt_g / recipe.servings).toFixed(1)}
+                    {(recipe.nutrition.salt_g / recipe.servings).toFixed(1)}
                   </div>
                   <div className="text-xs text-muted-foreground">g 食塩</div>
                 </div>
@@ -292,13 +293,7 @@ export default function RecipeDetailPage({
                   </div>
                 </div>
                 <div className="flex-1 pt-1">
-                  <p className="text-sm leading-relaxed">{step.instruction}</p>
-                  {step.time_minutes && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      約{step.time_minutes}分
-                    </p>
-                  )}
+                  <p className="text-sm leading-relaxed">{step.description}</p>
                 </div>
               </div>
             ))}

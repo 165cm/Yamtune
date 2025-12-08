@@ -63,6 +63,11 @@ export default function RecipeGenerator({ products }: RecipeGeneratorProps) {
 
       const data = await response.json()
 
+      // レシピが正常に生成されたか確認
+      if (!data.recipe || !data.recipe.id) {
+        throw new Error("レシピの生成に失敗しました。もう一度お試しください。")
+      }
+
       // レシピ詳細ページに遷移
       router.push(`/recipes/${data.recipe.id}`)
       setOpen(false)

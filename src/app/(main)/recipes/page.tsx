@@ -24,14 +24,15 @@ interface Recipe {
   title: string
   description: string
   servings: number
-  cooking_time_minutes: number
+  cooking_time: number
   difficulty: string
-  total_nutrition: {
+  nutrition: {
     energy_kcal?: number
     protein_g?: number
     fat_g?: number
     carbohydrate_g?: number
   }
+  image_url?: string
   isFavorite: boolean
   created_at: string
 }
@@ -145,24 +146,26 @@ export default function RecipesPage() {
                     <Users className="w-3 h-3" />
                     {recipe.servings}人分
                   </Badge>
-                  <Badge variant="outline" className="gap-1">
-                    <Clock className="w-3 h-3" />
-                    {recipe.cooking_time_minutes}分
-                  </Badge>
+                  {recipe.cooking_time && (
+                    <Badge variant="outline" className="gap-1">
+                      <Clock className="w-3 h-3" />
+                      {recipe.cooking_time}分
+                    </Badge>
+                  )}
                   <Badge className={difficultyColor(recipe.difficulty)}>
                     {recipe.difficulty}
                   </Badge>
                 </div>
 
                 {/* 栄養情報サマリー */}
-                {recipe.total_nutrition && (
+                {recipe.nutrition && (
                   <div className="grid grid-cols-3 gap-2 pt-3 border-t">
-                    {recipe.total_nutrition.energy_kcal !== undefined && (
+                    {recipe.nutrition.energy_kcal !== undefined && (
                       <div className="text-center">
                         <Flame className="w-4 h-4 text-orange-600 mx-auto mb-1" />
                         <div className="text-sm font-bold">
                           {Math.round(
-                            recipe.total_nutrition.energy_kcal / recipe.servings
+                            recipe.nutrition.energy_kcal / recipe.servings
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -170,12 +173,12 @@ export default function RecipesPage() {
                         </div>
                       </div>
                     )}
-                    {recipe.total_nutrition.protein_g !== undefined && (
+                    {recipe.nutrition.protein_g !== undefined && (
                       <div className="text-center">
                         <Beef className="w-4 h-4 text-red-600 mx-auto mb-1" />
                         <div className="text-sm font-bold">
                           {(
-                            recipe.total_nutrition.protein_g / recipe.servings
+                            recipe.nutrition.protein_g / recipe.servings
                           ).toFixed(1)}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -183,12 +186,12 @@ export default function RecipesPage() {
                         </div>
                       </div>
                     )}
-                    {recipe.total_nutrition.carbohydrate_g !== undefined && (
+                    {recipe.nutrition.carbohydrate_g !== undefined && (
                       <div className="text-center">
                         <Wheat className="w-4 h-4 text-amber-600 mx-auto mb-1" />
                         <div className="text-sm font-bold">
                           {(
-                            recipe.total_nutrition.carbohydrate_g /
+                            recipe.nutrition.carbohydrate_g /
                             recipe.servings
                           ).toFixed(1)}
                         </div>
