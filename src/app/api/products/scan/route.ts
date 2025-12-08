@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { image, name: manualName, nutrition: manualNutrition } = await request.json()
+    const { image, name: manualName, nutrition: manualNutrition, confirmNeeded } = await request.json()
 
     if (!image) {
       console.error("No image provided")
@@ -84,14 +84,54 @@ export async function POST(request: Request) {
 
 1. product_name: 商品名（日本語または英語）
 2. category: 商品カテゴリ（野菜、果物、肉、魚、乳製品、加工食品、飲料、菓子、調味料、その他のいずれか）
-3. nutrition_per_100g: 100gあたりの栄養成分（以下のキーを使用）
+3. nutrition_per_100g: 100gあたりの栄養成分（表示されているものだけを抽出）
+
+【基本栄養素】
    - energy_kcal: エネルギー（kcal）
    - protein_g: たんぱく質（g）
    - fat_g: 脂質（g）
    - carbohydrate_g: 炭水化物（g）
    - salt_g: 食塩相当量（g）
 
-値が見つからない場合は省略してください。必ずJSONのみを返してください。`,
+【詳細栄養素（表示があれば抽出）】
+   - sugar_g: 糖質（g）
+   - dietary_fiber_g: 食物繊維（g）
+   - sugars_g: 糖類（g）
+   - saturated_fat_g: 飽和脂肪酸（g）
+   - trans_fat_g: トランス脂肪酸（g）
+   - cholesterol_mg: コレステロール（mg）
+   - sodium_mg: ナトリウム（mg）
+
+【ビタミン類（表示があれば抽出）】
+   - vitamin_a_ug: ビタミンA（μg）
+   - vitamin_b1_mg: ビタミンB1（mg）
+   - vitamin_b2_mg: ビタミンB2（mg）
+   - vitamin_b6_mg: ビタミンB6（mg）
+   - vitamin_b12_ug: ビタミンB12（μg）
+   - vitamin_c_mg: ビタミンC（mg）
+   - vitamin_d_ug: ビタミンD（μg）
+   - vitamin_e_mg: ビタミンE（mg）
+   - vitamin_k_ug: ビタミンK（μg）
+   - folate_ug: 葉酸（μg）
+   - niacin_mg: ナイアシン（mg）
+   - pantothenic_acid_mg: パントテン酸（mg）
+   - biotin_ug: ビオチン（μg）
+
+【ミネラル類（表示があれば抽出）】
+   - calcium_mg: カルシウム（mg）
+   - iron_mg: 鉄（mg）
+   - magnesium_mg: マグネシウム（mg）
+   - phosphorus_mg: リン（mg）
+   - potassium_mg: カリウム（mg）
+   - zinc_mg: 亜鉛（mg）
+   - copper_mg: 銅（mg）
+   - manganese_mg: マンガン（mg）
+   - iodine_ug: ヨウ素（μg）
+   - selenium_ug: セレン（μg）
+   - chromium_ug: クロム（μg）
+   - molybdenum_ug: モリブデン（μg）
+
+表示されていない項目は省略してください。数値のみを抽出し、単位は含めないでください。必ずJSONのみを返してください。`,
                 },
                 {
                   type: "image_url",
@@ -103,7 +143,7 @@ export async function POST(request: Request) {
             },
           ],
           response_format: { type: "json_object" },
-          max_tokens: 1000,
+          max_tokens: 2000,
         }),
       }
     )
@@ -143,6 +183,19 @@ export async function POST(request: Request) {
     }
 
     console.log("Image URL:", imageUrl)
+
+    // confirmNeededがtrueの場合は抽出結果のみを返す（保存しない）
+    if (confirmNeeded) {
+      console.log("Confirmation needed - returning extracted data only")
+      return NextResponse.json({
+        extractedData: {
+          product_name: aiResult.product_name || "",
+          category: aiResult.category || "その他",
+          nutrition_per_100g: aiResult.nutrition_per_100g || {},
+        },
+        imageUrl,
+      })
+    }
 
     // AI抽出結果を使用（手動入力があれば優先）
     const productName = manualName || aiResult.product_name || "商品名不明"

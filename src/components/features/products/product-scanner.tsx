@@ -7,6 +7,55 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Camera, Upload, X, Loader2, Check } from "lucide-react"
 
+// 栄養素フィールドの定義
+const NUTRITION_FIELDS = {
+  basic: [
+    { key: "energy_kcal", label: "エネルギー", unit: "kcal", step: "1" },
+    { key: "protein_g", label: "たんぱく質", unit: "g", step: "0.1" },
+    { key: "fat_g", label: "脂質", unit: "g", step: "0.1" },
+    { key: "carbohydrate_g", label: "炭水化物", unit: "g", step: "0.1" },
+    { key: "salt_g", label: "食塩相当量", unit: "g", step: "0.01" },
+  ],
+  detailed: [
+    { key: "sugar_g", label: "糖質", unit: "g", step: "0.1" },
+    { key: "dietary_fiber_g", label: "食物繊維", unit: "g", step: "0.1" },
+    { key: "sugars_g", label: "糖類", unit: "g", step: "0.1" },
+    { key: "saturated_fat_g", label: "飽和脂肪酸", unit: "g", step: "0.01" },
+    { key: "trans_fat_g", label: "トランス脂肪酸", unit: "g", step: "0.01" },
+    { key: "cholesterol_mg", label: "コレステロール", unit: "mg", step: "1" },
+    { key: "sodium_mg", label: "ナトリウム", unit: "mg", step: "1" },
+  ],
+  vitamins: [
+    { key: "vitamin_a_ug", label: "ビタミンA", unit: "μg", step: "1" },
+    { key: "vitamin_b1_mg", label: "ビタミンB1", unit: "mg", step: "0.01" },
+    { key: "vitamin_b2_mg", label: "ビタミンB2", unit: "mg", step: "0.01" },
+    { key: "vitamin_b6_mg", label: "ビタミンB6", unit: "mg", step: "0.01" },
+    { key: "vitamin_b12_ug", label: "ビタミンB12", unit: "μg", step: "0.1" },
+    { key: "vitamin_c_mg", label: "ビタミンC", unit: "mg", step: "1" },
+    { key: "vitamin_d_ug", label: "ビタミンD", unit: "μg", step: "0.1" },
+    { key: "vitamin_e_mg", label: "ビタミンE", unit: "mg", step: "0.1" },
+    { key: "vitamin_k_ug", label: "ビタミンK", unit: "μg", step: "1" },
+    { key: "folate_ug", label: "葉酸", unit: "μg", step: "1" },
+    { key: "niacin_mg", label: "ナイアシン", unit: "mg", step: "0.1" },
+    { key: "pantothenic_acid_mg", label: "パントテン酸", unit: "mg", step: "0.01" },
+    { key: "biotin_ug", label: "ビオチン", unit: "μg", step: "0.1" },
+  ],
+  minerals: [
+    { key: "calcium_mg", label: "カルシウム", unit: "mg", step: "1" },
+    { key: "iron_mg", label: "鉄", unit: "mg", step: "0.1" },
+    { key: "magnesium_mg", label: "マグネシウム", unit: "mg", step: "1" },
+    { key: "phosphorus_mg", label: "リン", unit: "mg", step: "1" },
+    { key: "potassium_mg", label: "カリウム", unit: "mg", step: "1" },
+    { key: "zinc_mg", label: "亜鉛", unit: "mg", step: "0.1" },
+    { key: "copper_mg", label: "銅", unit: "mg", step: "0.01" },
+    { key: "manganese_mg", label: "マンガン", unit: "mg", step: "0.01" },
+    { key: "iodine_ug", label: "ヨウ素", unit: "μg", step: "1" },
+    { key: "selenium_ug", label: "セレン", unit: "μg", step: "1" },
+    { key: "chromium_ug", label: "クロム", unit: "μg", step: "0.1" },
+    { key: "molybdenum_ug", label: "モリブデン", unit: "μg", step: "1" },
+  ],
+}
+
 interface ProductScannerProps {
   onScanComplete: (product: any) => void
 }
@@ -20,9 +69,9 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
 
   // 編集フォーム用
   const [productName, setProductName] = useState("")
-  const [calories, setCalories] = useState("")
-  const [protein, setProtein] = useState("")
-  const [carbs, setCarbs] = useState("")
+  const [category, setCategory] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [nutrition, setNutrition] = useState<Record<string, number>>({})
 
   const packageInputRef = useRef<HTMLInputElement>(null)
   const packageCameraRef = useRef<HTMLInputElement>(null)
@@ -81,6 +130,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
         },
         body: JSON.stringify({
           image: nutritionImage,
+          confirmNeeded: true,
         }),
       })
 
@@ -91,11 +141,11 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
 
       const data = await response.json()
 
-      // OCRの結果を初期値として設定
-      setProductName(data.product.name || "")
-      setCalories(data.product.nutrition?.energy_kcal?.toString() || "")
-      setProtein(data.product.nutrition?.protein_g?.toString() || "")
-      setCarbs(data.product.nutrition?.carbohydrate_g?.toString() || "")
+      // AI抽出結果を初期値として設定
+      setProductName(data.extractedData.product_name || "")
+      setCategory(data.extractedData.category || "その他")
+      setImageUrl(data.imageUrl || "")
+      setNutrition(data.extractedData.nutrition_per_100g || {})
 
       setShowEditForm(true)
     } catch (err) {
@@ -115,13 +165,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
     setError(null)
 
     try {
-      // 栄養情報を構築
-      const nutritionInfo: any = {}
-      if (calories) nutritionInfo.energy_kcal = parseFloat(calories)
-      if (protein) nutritionInfo.protein_g = parseFloat(protein)
-      if (carbs) nutritionInfo.carbohydrate_g = parseFloat(carbs)
-
-      // 商品を更新または新規作成
+      // 商品を保存（confirmNeededなしで保存まで実行）
       const response = await fetch("/api/products/scan", {
         method: "POST",
         headers: {
@@ -130,7 +174,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
         body: JSON.stringify({
           image: packageImage || nutritionImage,
           name: productName,
-          nutrition: nutritionInfo,
+          nutrition: nutrition,
         }),
       })
 
@@ -147,9 +191,9 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
       setNutritionImage(null)
       setShowEditForm(false)
       setProductName("")
-      setCalories("")
-      setProtein("")
-      setCarbs("")
+      setCategory("")
+      setImageUrl("")
+      setNutrition({})
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました")
     } finally {
@@ -162,10 +206,39 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
     setNutritionImage(null)
     setShowEditForm(false)
     setProductName("")
-    setCalories("")
-    setProtein("")
-    setCarbs("")
+    setCategory("")
+    setImageUrl("")
+    setNutrition({})
     setError(null)
+  }
+
+  // 栄養素フィールドのレンダリングヘルパー
+  const renderNutritionFields = (fields: typeof NUTRITION_FIELDS.basic) => {
+    return fields.map((field) => (
+      <div key={field.key}>
+        <Label htmlFor={field.key} className="text-xs">
+          {field.label} ({field.unit})
+        </Label>
+        <Input
+          id={field.key}
+          type="number"
+          step={field.step}
+          value={nutrition[field.key]?.toString() || ""}
+          onChange={(e) => {
+            const value = e.target.value
+            if (value === "") {
+              const newNutrition = { ...nutrition }
+              delete newNutrition[field.key]
+              setNutrition(newNutrition)
+            } else {
+              setNutrition({ ...nutrition, [field.key]: parseFloat(value) })
+            }
+          }}
+          placeholder="-"
+          className="mt-1 h-9"
+        />
+      </div>
+    ))
   }
 
   // 編集フォーム表示
@@ -175,7 +248,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
         <CardHeader>
           <CardTitle className="text-lg">商品情報を確認</CardTitle>
           <p className="text-sm text-muted-foreground">
-            OCRで読み取った情報を確認・編集してください
+            AIで読み取った情報を確認・編集してください
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -194,7 +267,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div>
               <Label htmlFor="productName">商品名 *</Label>
               <Input
@@ -206,43 +279,44 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label htmlFor="calories">エネルギー (kcal)</Label>
-                <Input
-                  id="calories"
-                  type="number"
-                  value={calories}
-                  onChange={(e) => setCalories(e.target.value)}
-                  placeholder="0"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="protein">たんぱく質 (g)</Label>
-                <Input
-                  id="protein"
-                  type="number"
-                  step="0.1"
-                  value={protein}
-                  onChange={(e) => setProtein(e.target.value)}
-                  placeholder="0.0"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="carbs">炭水化物 (g)</Label>
-                <Input
-                  id="carbs"
-                  type="number"
-                  step="0.1"
-                  value={carbs}
-                  onChange={(e) => setCarbs(e.target.value)}
-                  placeholder="0.0"
-                  className="mt-1"
-                />
+            <div>
+              <Label htmlFor="category">カテゴリ</Label>
+              <Input
+                id="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="カテゴリ"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="space-y-3 border-t pt-3">
+              <h3 className="font-medium text-sm">基本栄養素（100gあたり）</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {renderNutritionFields(NUTRITION_FIELDS.basic)}
               </div>
             </div>
+
+            <details className="border-t pt-3">
+              <summary className="font-medium text-sm cursor-pointer">詳細栄養素（表示がある場合）</summary>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                {renderNutritionFields(NUTRITION_FIELDS.detailed)}
+              </div>
+            </details>
+
+            <details className="border-t pt-3">
+              <summary className="font-medium text-sm cursor-pointer">ビタミン類（表示がある場合）</summary>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                {renderNutritionFields(NUTRITION_FIELDS.vitamins)}
+              </div>
+            </details>
+
+            <details className="border-t pt-3">
+              <summary className="font-medium text-sm cursor-pointer">ミネラル類（表示がある場合）</summary>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                {renderNutritionFields(NUTRITION_FIELDS.minerals)}
+              </div>
+            </details>
           </div>
 
           {error && (
@@ -251,7 +325,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 border-t pt-4">
             <Button
               onClick={handleSave}
               disabled={isScanning}
