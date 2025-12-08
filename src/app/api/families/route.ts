@@ -14,7 +14,7 @@ export async function GET() {
     const { data: families, error } = await supabase
       .from("families")
       .select("*")
-      .eq("owner_id", user.id)
+      .eq("user_id", user.id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -42,12 +42,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name } = body
 
+    if (!name) {
+      return NextResponse.json(
+        { error: "Family name is required" },
+        { status: 400 }
+      )
+    }
+
     // Create family
     const { data: family, error } = await supabase
       .from("families")
       .insert({
-        owner_id: user.id,
-      } as any)
+        user_id: user.id,
+        name: name,
+      })
       .select()
       .single()
 

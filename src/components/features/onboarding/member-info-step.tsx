@@ -110,6 +110,36 @@ export default function MemberInfoStep() {
     }
   }
 
+  const handleSkip = async () => {
+    setIsSubmitting(true)
+    setError("")
+
+    try {
+      // 家族だけ作成してスキップ
+      const familyResponse = await fetch("/api/families", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: familyData.name || "マイファミリー",
+        }),
+      })
+
+      if (!familyResponse.ok) {
+        throw new Error("家族の作成に失敗しました")
+      }
+
+      const family = await familyResponse.json()
+      setCurrentFamily(family)
+
+      // オンボーディング完了してホームへ
+      completeOnboarding()
+      router.push("/home")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "エラーが発生しました")
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <Card className="border-2">
       <CardHeader className="text-center">
@@ -221,6 +251,14 @@ export default function MemberInfoStep() {
             disabled={isSubmitting}
           >
             戻る
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={handleSkip}
+            disabled={isSubmitting}
+          >
+            スキップして始める
           </Button>
         </div>
       </CardContent>

@@ -23,6 +23,12 @@ export default function FamilyInfoStep() {
     nextStep()
   }
 
+  const handleSkip = () => {
+    // デフォルトの家族名を設定してスキップ
+    setFamilyData({ name: "マイファミリー" })
+    nextStep()
+  }
+
   return (
     <Card className="border-2">
       <CardHeader className="text-center">
@@ -68,6 +74,13 @@ export default function FamilyInfoStep() {
             onClick={prevStep}
           >
             戻る
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={handleSkip}
+          >
+            スキップ
           </Button>
         </div>
       </CardContent>
