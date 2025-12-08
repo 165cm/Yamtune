@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
 import RecipeGenerator from "@/components/features/recipes/recipe-generator"
-import { Package, Sparkles, Loader2, ShoppingBag } from "lucide-react"
+import { Package, Sparkles, Loader2, ShoppingBag, ChefHat, Heart } from "lucide-react"
 
 export default function HomePage() {
   const router = useRouter()
@@ -17,6 +17,8 @@ export default function HomePage() {
   const supabase = createClient()
   const [products, setProducts] = useState<any[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const [recentRecipes, setRecentRecipes] = useState<any[]>([])
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(true)
   const productsListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,6 +31,7 @@ export default function HomePage() {
         router.push("/login")
       } else {
         fetchProducts()
+        fetchRecentRecipes()
       }
     }
 
@@ -54,6 +57,20 @@ export default function HomePage() {
       console.error("Failed to fetch products:", error)
     } finally {
       setIsLoadingProducts(false)
+    }
+  }
+
+  const fetchRecentRecipes = async () => {
+    try {
+      const response = await fetch("/api/recipes")
+      if (response.ok) {
+        const data = await response.json()
+        setRecentRecipes(data.recipes.slice(0, 3)) // 最新3件のみ
+      }
+    } catch (error) {
+      console.error("Failed to fetch recipes:", error)
+    } finally {
+      setIsLoadingRecipes(false)
     }
   }
 
@@ -152,6 +169,57 @@ export default function HomePage() {
           </h2>
           <ProductScanner onScanComplete={handleScanComplete} />
         </div>
+
+        {/* 最近のレシピ */}
+        {recentRecipes.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <ChefHat className="w-6 h-6" />
+                最近のレシピ
+              </h2>
+              <Button
+                variant="ghost"
+                onClick={() => router.push("/recipes")}
+                className="text-sm"
+              >
+                すべて見る →
+              </Button>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {recentRecipes.map((recipe) => (
+                <Card
+                  key={recipe.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => router.push(`/recipes/${recipe.id}`)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base line-clamp-2">
+                        {recipe.title}
+                      </CardTitle>
+                      {recipe.isFavorite && (
+                        <Heart className="w-4 h-4 text-red-500 fill-current flex-shrink-0" />
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                      {recipe.description}
+                    </p>
+                    <div className="flex gap-2 text-xs text-muted-foreground">
+                      <span>{recipe.servings}人分</span>
+                      <span>•</span>
+                      <span>{recipe.cooking_time_minutes}分</span>
+                      <span>•</span>
+                      <span>{recipe.difficulty}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* AIレシピ生成 */}
         {products.length > 0 && (
