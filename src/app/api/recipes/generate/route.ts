@@ -216,29 +216,40 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
     )
 
     console.log("Recipe generated:", recipeData.title)
+    console.log("Recipe data from AI:", JSON.stringify(recipeData, null, 2))
 
     // データベースにレシピを保存
+    const insertData = {
+      user_id: user.id,
+      title: recipeData.title || "無題のレシピ",
+      description: recipeData.description || "",
+      servings: recipeData.servings || servings,
+      cooking_time: recipeData.cooking_time || null,
+      difficulty: recipeData.difficulty || "普通",
+      nutrition: recipeData.nutrition || {},
+    }
+
+    console.log("Inserting recipe with data:", JSON.stringify(insertData, null, 2))
+
     const { data: recipe, error: recipeError } = await (supabase as any)
       .from("recipes")
-      .insert({
-        user_id: user.id,
-        title: recipeData.title,
-        description: recipeData.description,
-        servings: recipeData.servings || servings,
-        cooking_time: recipeData.cooking_time,
-        difficulty: recipeData.difficulty,
-        nutrition: recipeData.nutrition,
-      })
+      .insert(insertData)
       .select()
       .single()
 
-    if (recipeError) {
+    console.log("Insert result - recipe:", recipe)
+    console.log("Insert result - error:", recipeError)
+
+    if (recipeError || !recipe) {
       console.error("Recipe insert error:", recipeError)
+      console.error("Recipe data:", recipe)
       return NextResponse.json(
-        { error: "レシピの保存に失敗しました" },
+        { error: `レシピの保存に失敗しました: ${recipeError?.message || "Unknown error"}` },
         { status: 500 }
       )
     }
+
+    console.log("Recipe saved with ID:", recipe.id)
 
     // 材料を保存
     if (recipeData.ingredients && recipeData.ingredients.length > 0) {
