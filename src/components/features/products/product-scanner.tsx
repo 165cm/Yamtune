@@ -256,13 +256,17 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
             {packageImage && (
               <div>
                 <p className="text-sm font-medium mb-2">パッケージ</p>
-                <img src={packageImage} alt="パッケージ" className="w-full h-32 object-cover rounded-lg" />
+                <div className="aspect-square w-full rounded-lg overflow-hidden">
+                  <img src={packageImage} alt="パッケージ" className="w-full h-full object-cover" />
+                </div>
               </div>
             )}
             {nutritionImage && (
               <div>
                 <p className="text-sm font-medium mb-2">栄養表示</p>
-                <img src={nutritionImage} alt="栄養表示" className="w-full h-32 object-cover rounded-lg" />
+                <div className="aspect-square w-full rounded-lg overflow-hidden">
+                  <img src={nutritionImage} alt="栄養表示" className="w-full h-full object-cover" />
+                </div>
               </div>
             )}
           </div>
@@ -370,11 +374,11 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
             <div className="space-y-2">
               <p className="text-sm font-medium">パッケージ（任意）</p>
               {packageImage ? (
-                <div className="relative">
+                <div className="relative aspect-square w-full rounded-lg overflow-hidden">
                   <img
                     src={packageImage}
                     alt="パッケージ画像"
-                    className="w-full h-48 object-cover rounded-lg"
+                    className="w-full h-full object-cover"
                   />
                   <button
                     onClick={() => setPackageImage(null)}
@@ -425,11 +429,11 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
             <div className="space-y-2">
               <p className="text-sm font-medium">栄養表示 *</p>
               {nutritionImage ? (
-                <div className="relative">
+                <div className="relative aspect-square w-full rounded-lg overflow-hidden">
                   <img
                     src={nutritionImage}
                     alt="栄養表示画像"
-                    className="w-full h-48 object-cover rounded-lg"
+                    className="w-full h-full object-cover"
                   />
                   <button
                     onClick={() => setNutritionImage(null)}
