@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuthStore } from "@/stores/auth-store"
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
-import { Package, Sparkles } from "lucide-react"
+import { Package, Sparkles, Loader2, ShoppingBag } from "lucide-react"
 
 export default function HomePage() {
   const router = useRouter()
@@ -16,6 +16,7 @@ export default function HomePage() {
   const supabase = createClient()
   const [products, setProducts] = useState<any[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const productsListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const checkUser = async () => {
@@ -57,6 +58,10 @@ export default function HomePage() {
 
   const handleScanComplete = (product: any) => {
     setProducts([product, ...products])
+    // 商品一覧にスクロール
+    setTimeout(() => {
+      productsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 100)
   }
 
   const handleDeleteProduct = async (id: string) => {
@@ -96,19 +101,26 @@ export default function HomePage() {
           </Button>
         </div>
 
-        {/* 商品スキャン */}
-        <div>
+        {/* 登録済み商品一覧 */}
+        <div ref={productsListRef}>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Package className="w-6 h-6" />
-            商品をスキャン
+            <ShoppingBag className="w-6 h-6" />
+            登録済み商品
+            {!isLoadingProducts && products.length > 0 && (
+              <span className="text-sm text-muted-foreground font-normal">
+                ({products.length}件)
+              </span>
+            )}
           </h2>
-          <ProductScanner onScanComplete={handleScanComplete} />
-        </div>
 
-        {/* スキャン済み商品 */}
-        {products.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">スキャン済み商品</h2>
+          {isLoadingProducts ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-muted-foreground">読み込み中...</span>
+              </CardContent>
+            </Card>
+          ) : products.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
               {products.map((product) => (
                 <ProductCard
@@ -118,8 +130,27 @@ export default function HomePage() {
                 />
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="w-16 h-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">まだ商品が登録されていません</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  下の「商品をスキャン」から商品を登録してみましょう
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* 商品スキャン */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Package className="w-6 h-6" />
+            商品をスキャン
+          </h2>
+          <ProductScanner onScanComplete={handleScanComplete} />
+        </div>
 
         {/* クイックアクション */}
         <Card>
