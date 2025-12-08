@@ -16,9 +16,11 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { food_name, category, severity, notes } = body
+    // Accept both 'status' and 'category' for backwards compatibility
+    const { food_name, status, category, notes } = body
+    const foodStatus = status || category
 
-    if (!food_name || !category) {
+    if (!food_name || !foodStatus) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -32,7 +34,7 @@ export async function POST(
       .eq("id", id)
       .single()
 
-    if (!member || ((member as any).families as any).owner_id !== user.id) {
+    if (!member || ((member as any).families as any).user_id !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -41,8 +43,7 @@ export async function POST(
       .insert({
         member_id: id,
         food_name,
-        category,
-        severity,
+        status: foodStatus,
         notes,
       } as any)
       .select()

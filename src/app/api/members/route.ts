@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       .from("families")
       .select("*")
       .eq("id", familyId)
-      .eq("owner_id", user.id)
+      .eq("user_id", user.id)
       .single()
 
     if (!family) {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       .from("families")
       .select("*")
       .eq("id", family_id)
-      .eq("owner_id", user.id)
+      .eq("user_id", user.id)
       .single()
 
     if (!family) {

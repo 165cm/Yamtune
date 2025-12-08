@@ -22,7 +22,7 @@ export async function DELETE(
       .eq("id", id)
       .single()
 
-    if (!member || ((member as any).families as any).owner_id !== user.id) {
+    if (!member || ((member as any).families as any).user_id !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
