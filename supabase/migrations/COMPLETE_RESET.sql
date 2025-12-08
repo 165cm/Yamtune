@@ -187,57 +187,85 @@ CREATE POLICY "Enable read for all" ON products FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all" ON products FOR INSERT WITH CHECK (true);
 
 -- user_products: 自分のデータのみ
-CREATE POLICY "Enable all for own user_products" ON user_products FOR ALL
-USING (auth.uid()::text = user_id::text);
+CREATE POLICY "user_products_select" ON user_products FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "user_products_insert" ON user_products FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_products_delete" ON user_products FOR DELETE USING (auth.uid() = user_id);
 
 -- families: 自分のデータのみ
-CREATE POLICY "Enable all for own family" ON families FOR ALL
-USING (auth.uid()::text = user_id::text);
+CREATE POLICY "families_select" ON families FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "families_insert" ON families FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "families_update" ON families FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "families_delete" ON families FOR DELETE USING (auth.uid() = user_id);
 
 -- members: 自分の家族のメンバーのみ
-CREATE POLICY "Enable all for own family members" ON members FOR ALL
-USING (EXISTS (
-  SELECT 1 FROM families
-  WHERE families.id = members.family_id
-  AND families.user_id::text = auth.uid()::text
-));
+CREATE POLICY "members_select" ON members FOR SELECT
+USING (EXISTS (SELECT 1 FROM families WHERE families.id = members.family_id AND families.user_id = auth.uid()));
+CREATE POLICY "members_insert" ON members FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM families WHERE families.id = members.family_id AND families.user_id = auth.uid()));
+CREATE POLICY "members_update" ON members FOR UPDATE
+USING (EXISTS (SELECT 1 FROM families WHERE families.id = members.family_id AND families.user_id = auth.uid()));
+CREATE POLICY "members_delete" ON members FOR DELETE
+USING (EXISTS (SELECT 1 FROM families WHERE families.id = members.family_id AND families.user_id = auth.uid()));
 
 -- member_foods: 自分の家族のメンバーの好き嫌いのみ
-CREATE POLICY "Enable all for own family member foods" ON member_foods FOR ALL
+CREATE POLICY "member_foods_select" ON member_foods FOR SELECT
 USING (EXISTS (
-  SELECT 1 FROM members
-  JOIN families ON families.id = members.family_id
-  WHERE members.id = member_foods.member_id
-  AND families.user_id::text = auth.uid()::text
+  SELECT 1 FROM members JOIN families ON families.id = members.family_id
+  WHERE members.id = member_foods.member_id AND families.user_id = auth.uid()
+));
+CREATE POLICY "member_foods_insert" ON member_foods FOR INSERT
+WITH CHECK (EXISTS (
+  SELECT 1 FROM members JOIN families ON families.id = members.family_id
+  WHERE members.id = member_foods.member_id AND families.user_id = auth.uid()
+));
+CREATE POLICY "member_foods_update" ON member_foods FOR UPDATE
+USING (EXISTS (
+  SELECT 1 FROM members JOIN families ON families.id = members.family_id
+  WHERE members.id = member_foods.member_id AND families.user_id = auth.uid()
+));
+CREATE POLICY "member_foods_delete" ON member_foods FOR DELETE
+USING (EXISTS (
+  SELECT 1 FROM members JOIN families ON families.id = members.family_id
+  WHERE members.id = member_foods.member_id AND families.user_id = auth.uid()
 ));
 
 -- recipes: 自分のレシピのみ
-CREATE POLICY "Enable all for own recipes" ON recipes FOR ALL
-USING (auth.uid()::text = user_id::text);
+CREATE POLICY "recipes_select" ON recipes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "recipes_insert" ON recipes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "recipes_update" ON recipes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "recipes_delete" ON recipes FOR DELETE USING (auth.uid() = user_id);
 
 -- recipe_ingredients: 自分のレシピの材料のみ
-CREATE POLICY "Enable all for own recipe ingredients" ON recipe_ingredients FOR ALL
-USING (EXISTS (
-  SELECT 1 FROM recipes
-  WHERE recipes.id = recipe_ingredients.recipe_id
-  AND recipes.user_id::text = auth.uid()::text
-));
+CREATE POLICY "recipe_ingredients_select" ON recipe_ingredients FOR SELECT
+USING (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_ingredients.recipe_id AND recipes.user_id = auth.uid()));
+CREATE POLICY "recipe_ingredients_insert" ON recipe_ingredients FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_ingredients.recipe_id AND recipes.user_id = auth.uid()));
+CREATE POLICY "recipe_ingredients_update" ON recipe_ingredients FOR UPDATE
+USING (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_ingredients.recipe_id AND recipes.user_id = auth.uid()));
+CREATE POLICY "recipe_ingredients_delete" ON recipe_ingredients FOR DELETE
+USING (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_ingredients.recipe_id AND recipes.user_id = auth.uid()));
 
 -- recipe_steps: 自分のレシピの手順のみ
-CREATE POLICY "Enable all for own recipe steps" ON recipe_steps FOR ALL
-USING (EXISTS (
-  SELECT 1 FROM recipes
-  WHERE recipes.id = recipe_steps.recipe_id
-  AND recipes.user_id::text = auth.uid()::text
-));
+CREATE POLICY "recipe_steps_select" ON recipe_steps FOR SELECT
+USING (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_steps.recipe_id AND recipes.user_id = auth.uid()));
+CREATE POLICY "recipe_steps_insert" ON recipe_steps FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_steps.recipe_id AND recipes.user_id = auth.uid()));
+CREATE POLICY "recipe_steps_update" ON recipe_steps FOR UPDATE
+USING (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_steps.recipe_id AND recipes.user_id = auth.uid()));
+CREATE POLICY "recipe_steps_delete" ON recipe_steps FOR DELETE
+USING (EXISTS (SELECT 1 FROM recipes WHERE recipes.id = recipe_steps.recipe_id AND recipes.user_id = auth.uid()));
 
 -- user_recipes: 自分のデータのみ
-CREATE POLICY "Enable all for own user recipes" ON user_recipes FOR ALL
-USING (auth.uid()::text = user_id::text);
+CREATE POLICY "user_recipes_select" ON user_recipes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "user_recipes_insert" ON user_recipes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_recipes_update" ON user_recipes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "user_recipes_delete" ON user_recipes FOR DELETE USING (auth.uid() = user_id);
 
 -- cooking_logs: 自分のデータのみ
-CREATE POLICY "Enable all for own cooking logs" ON cooking_logs FOR ALL
-USING (auth.uid()::text = user_id::text);
+CREATE POLICY "cooking_logs_select" ON cooking_logs FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "cooking_logs_insert" ON cooking_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "cooking_logs_update" ON cooking_logs FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "cooking_logs_delete" ON cooking_logs FOR DELETE USING (auth.uid() = user_id);
 
 -- ========================================
 -- 完了メッセージ
