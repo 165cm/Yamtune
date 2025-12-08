@@ -31,7 +31,7 @@ Yamtuneは、2〜10歳の好き嫌いの多い子どもを持つ母親向けの�
 - PostgreSQL
 
 ### 外部API
-- Google Cloud Vision OCR
+- OpenAI GPT-4o-mini Vision (商品スキャン・栄養成分抽出)
 - OpenAI GPT-4o-mini (レシピ生成)
 - Kling AI (料理写真生成)
 
@@ -68,10 +68,9 @@ cp .env.example .env.local
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabaseプロジェクト URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase Anon Key
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase Service Role Key
-- `GOOGLE_CLOUD_VISION_API_KEY`: Google Cloud Vision API Key
-- `OPENAI_API_KEY`: OpenAI API Key
-- `KLING_ACCESS_KEY`: Kling AI Access Key
-- `KLING_SECRET_KEY`: Kling AI Secret Key
+- `OPENAI_API_KEY`: OpenAI API Key（Vision + Chat機能）
+- `KLING_ACCESS_KEY`: Kling AI Access Key（画像生成）
+- `KLING_SECRET_KEY`: Kling AI Secret Key（画像生成）
 
 ### Supabaseのセットアップ
 
@@ -134,13 +133,21 @@ src/
   - [x] 好き嫌い管理API
   - [x] 家族管理画面
 
-### Phase 3: 商品スキャン 📋
-- [ ] Google Cloud Vision OCR実装
-- [ ] 商品撮影・認識機能
+### Phase 3: 商品スキャン ✅
+- [x] OpenAI GPT-4o-mini Vision API実装（OCR代替）
+- [x] 商品撮影・栄養成分認識機能
+- [x] 35+栄養素の抽出（基本栄養素、ビタミン、ミネラル）
+- [x] ユーザー確認フロー（スキャン→確認→保存）
+- [x] 商品カード表示（画像、栄養情報オーバーレイ）
+- [x] カテゴリ自動分類
 
-### Phase 4: レシピ生成 📋
-- [ ] OpenAI GPT-4o-mini連携
-- [ ] レシピ生成・表示
+### Phase 4: レシピ生成 ✅
+- [x] OpenAI GPT-4o-mini連携（レシピ生成）
+- [x] 登録商品と家族の好き嫌いを考慮したレシピ生成
+- [x] レシピ詳細ページ（材料、手順、栄養情報、アドバイス）
+- [x] レシピ一覧ページ（フィルタ、検索）
+- [x] お気に入り機能
+- [x] ホームページに最近のレシピ表示
 
 ### Phase 5: 画像生成 & 記録 📋
 - [ ] Kling AI画像生成

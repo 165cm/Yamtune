@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CookingLogDialog } from "@/components/features/recipes/cooking-log-dialog"
 import {
   ArrowLeft,
   Heart,
@@ -24,6 +25,7 @@ interface Recipe {
   servings: number
   cooking_time_minutes: number
   difficulty: string
+  image_url?: string
   total_nutrition: {
     energy_kcal?: number
     protein_g?: number
@@ -130,26 +132,38 @@ export default function RecipeDetailPage({
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/recipes")}
-          className="gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          レシピ一覧
-        </Button>
-        <Button
-          variant={isFavorite ? "default" : "outline"}
-          onClick={toggleFavorite}
-          disabled={isTogglingFavorite}
-          className="gap-2"
-        >
-          <Heart
-            className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`}
-          />
-          {isFavorite ? "お気に入り済み" : "お気に入り"}
-        </Button>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/recipes")}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            レシピ一覧
+          </Button>
+          <div className="flex gap-2">
+            <CookingLogDialog
+              recipeId={recipe.id}
+              recipeTitle={recipe.title}
+              onSuccess={() => {
+                // 調理記録が成功したら、ページをリロードして最新のデータを取得
+                fetchRecipe()
+              }}
+            />
+            <Button
+              variant={isFavorite ? "default" : "outline"}
+              onClick={toggleFavorite}
+              disabled={isTogglingFavorite}
+              className="gap-2"
+            >
+              <Heart
+                className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`}
+              />
+              {isFavorite ? "お気に入り済み" : "お気に入り"}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* タイトルと基本情報 */}
@@ -170,6 +184,19 @@ export default function RecipeDetailPage({
           </div>
         </CardHeader>
       </Card>
+
+      {/* AI生成画像 */}
+      {recipe.image_url && (
+        <Card className="mb-6 overflow-hidden">
+          <CardContent className="p-0">
+            <img
+              src={recipe.image_url}
+              alt={recipe.title}
+              className="w-full h-auto object-cover max-h-96"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* 栄養情報 */}
       {recipe.total_nutrition && (

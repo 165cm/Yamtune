@@ -1,5 +1,50 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { klingAI } from "@/lib/services/kling-ai"
+
+/**
+ * バックグラウンドで料理画像を生成してレシピに保存
+ */
+async function generateRecipeImageInBackground(
+  recipeId: string,
+  title: string,
+  description: string,
+  ingredientNames: string[]
+): Promise<void> {
+  try {
+    console.log(`Generating image for recipe ${recipeId} in background...`)
+
+    // Kling AIで画像を生成
+    const imageUrl = await klingAI.generateRecipeImage(
+      title,
+      description,
+      ingredientNames
+    )
+
+    if (!imageUrl) {
+      console.log("Image generation returned null")
+      return
+    }
+
+    // Supabaseクライアントを作成してレシピに画像URLを保存
+    const supabase = await createClient()
+    const { error } = await (supabase as any)
+      .from("recipes")
+      .update({
+        image_url: imageUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", recipeId)
+
+    if (error) {
+      console.error("Failed to update recipe with image URL:", error)
+    } else {
+      console.log(`Image successfully generated and saved for recipe ${recipeId}`)
+    }
+  } catch (error) {
+    console.error("Error in background image generation:", error)
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -252,6 +297,21 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
       )
       .eq("id", recipe.id)
       .single()
+
+    // Kling AIで料理画像を生成（バックグラウンドで非同期実行）
+    if (klingAI.isConfigured()) {
+      // 非同期で画像生成を実行（レスポンスを待たない）
+      generateRecipeImageInBackground(
+        recipe.id,
+        recipeData.title,
+        recipeData.description || "",
+        recipeData.ingredients?.map((i: any) => i.name) || []
+      ).catch((error) => {
+        console.error("Background image generation failed:", error)
+      })
+    } else {
+      console.log("Kling AI not configured, skipping image generation")
+    }
 
     return NextResponse.json({
       recipe: fullRecipe,
