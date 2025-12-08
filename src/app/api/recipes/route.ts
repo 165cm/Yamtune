@@ -29,9 +29,10 @@ export async function GET(request: Request) {
         title,
         description,
         servings,
-        cooking_time_minutes,
+        cooking_time,
         difficulty,
-        total_nutrition,
+        nutrition,
+        image_url,
         created_at
       )
     `
