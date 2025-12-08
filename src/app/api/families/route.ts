@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: families, error } = await supabase
+    const { data: families, error } = await (supabase as any)
       .from("families")
       .select("*")
       .eq("user_id", user.id)
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create family
-    const { data: family, error } = await supabase
+    const { data: family, error } = await (supabase as any)
       .from("families")
       .insert({
         user_id: user.id,

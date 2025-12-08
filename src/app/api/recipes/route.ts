@@ -1,46 +1,64 @@
-import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { NextResponse } from "next/server"
 
-// ユーザーのレシピ一覧を取得
-export async function GET() {
-  try {
-    const supabase = await createClient()
+export async function GET(request: Request) {
+  const supabase = await createClient()
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  // ユーザー認証チェック
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  // URLパラメータからフィルタを取得
+  const { searchParams } = new URL(request.url)
+  const onlyFavorites = searchParams.get("favorites") === "true"
 
-    // ユーザーのレシピを取得（材料と手順も含む）
-    const { data: recipes, error } = await (supabase as any)
-      .from("recipes")
-      .select(
-        `
-        *,
-        recipe_ingredients(*),
-        recipe_steps(*)
+  // レシピ一覧を取得（user_recipesテーブルを通じてユーザーのレシピを取得）
+  let query = (supabase as any)
+    .from("user_recipes")
+    .select(
       `
+      recipe_id,
+      is_favorite,
+      created_at,
+      recipes (
+        id,
+        title,
+        description,
+        servings,
+        cooking_time_minutes,
+        difficulty,
+        total_nutrition,
+        created_at
       )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+    `
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Fetch recipes error:", error)
-      return NextResponse.json(
-        { error: "Failed to fetch recipes" },
-        { status: 500 }
-      )
-    }
+  // お気に入りのみフィルタ
+  if (onlyFavorites) {
+    query = query.eq("is_favorite", true)
+  }
 
-    return NextResponse.json(recipes)
-  } catch (error) {
-    console.error("Get recipes error:", error)
+  const { data, error } = await query
+
+  if (error) {
+    console.error("Error fetching recipes:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to fetch recipes" },
       { status: 500 }
     )
   }
+
+  // データを整形
+  const recipes = data.map((item: any) => ({
+    ...item.recipes,
+    isFavorite: item.is_favorite,
+  }))
+
+  return NextResponse.json({ recipes })
 }
