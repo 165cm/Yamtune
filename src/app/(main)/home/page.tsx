@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
+import RecipeGenerator from "@/components/features/recipes/recipe-generator"
 import { Package, Sparkles, Loader2, ShoppingBag } from "lucide-react"
 
 export default function HomePage() {
@@ -151,6 +152,21 @@ export default function HomePage() {
           </h2>
           <ProductScanner onScanComplete={handleScanComplete} />
         </div>
+
+        {/* AIレシピ生成 */}
+        {products.length > 0 && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Sparkles className="w-6 h-6" />
+              AIレシピ生成
+            </h2>
+            <Card>
+              <CardContent className="pt-6">
+                <RecipeGenerator products={products} />
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* クイックアクション */}
         <Card>
