@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const { data: families } = await supabase
       .from("families")
       .select("*")
-      .eq("owner_id", user.id)
+      .eq("user_id", user.id)
       .limit(1)
 
     if (families && families.length > 0) {
