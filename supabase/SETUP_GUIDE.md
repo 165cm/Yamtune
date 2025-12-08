@@ -9,10 +9,15 @@
 1. [Supabase Dashboard](https://app.supabase.com/) にアクセス
 2. プロジェクトを選択
 3. 左メニューから **SQL Editor** を開く
-4. `supabase/migrations/SIMPLE_setup.sql` の内容を**全てコピー**
+4. `supabase/migrations/SAFE_setup.sql` の内容を**全てコピー**
 5. SQL Editorに貼り付けて **Run** をクリック
 
-✅ 成功メッセージが表示されればOK！
+✅ 「セットアップ完了！」のメッセージが表示されればOK！
+
+**このSQLの特徴：**
+- 既存テーブルがあっても安全に実行できる
+- 不足しているカラムを自動的に追加
+- エラーを自動で無視
 
 ### ステップ2: ストレージバケットを作成
 
