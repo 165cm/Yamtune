@@ -22,29 +22,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify family ownership
-    const { data: family, error: familyError } = await supabase
+    const { data: family } = await supabase
       .from("families")
       .select("*")
       .eq("id", familyId)
       .eq("user_id", user.id)
       .single()
 
-    console.log("=== MEMBERS GET DEBUG ===")
-    console.log("user.id:", user.id)
-    console.log("familyId from query:", familyId)
-    console.log("family query result:", family)
-    console.log("family query error:", familyError)
-    console.log("=========================")
-
     if (!family) {
-      return NextResponse.json({
-        error: "Forbidden",
-        debug: {
-          user_id: user.id,
-          family_id: familyId,
-          familyError: familyError?.message
-        }
-      }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { data: members, error } = await supabase
@@ -87,38 +73,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify family ownership
-    const { data: family, error: familyError } = await supabase
+    const { data: family } = await supabase
       .from("families")
       .select("*")
       .eq("id", family_id)
       .eq("user_id", user.id)
       .single()
 
-    console.log("=== MEMBERS POST DEBUG ===")
-    console.log("user.id:", user.id)
-    console.log("family_id from request:", family_id)
-    console.log("family query result:", family)
-    console.log("family query error:", familyError)
-
-    // Also try without user_id filter to see what's in DB
-    const { data: anyFamily } = await supabase
-      .from("families")
-      .select("*")
-      .eq("id", family_id)
-      .single()
-    console.log("family without user_id filter:", anyFamily)
-    console.log("=========================")
-
     if (!family) {
-      return NextResponse.json({
-        error: "Forbidden",
-        debug: {
-          user_id: user.id,
-          family_id: family_id,
-          familyError: familyError?.message,
-          anyFamily: anyFamily
-        }
-      }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { data: member, error } = await supabase
