@@ -1,22 +1,28 @@
 /**
  * Kling AI画像生成サービス
  * レシピから料理写真を生成するためのAPI
+ * JWT認証を使用
  */
 
-interface KlingImageGenerationRequest {
-  prompt: string
-  negative_prompt?: string
-  model?: string
-  aspect_ratio?: string
-  image_count?: number
-}
+import crypto from "crypto"
 
 interface KlingImageGenerationResponse {
-  task_id: string
-  status: "processing" | "success" | "failed"
-  images?: Array<{
-    url: string
-  }>
+  code: number
+  message: string
+  request_id: string
+  data?: {
+    task_id: string
+    task_status: string
+    task_status_msg?: string
+    created_at?: number
+    updated_at?: number
+    task_result?: {
+      images?: Array<{
+        index: number
+        url: string
+      }>
+    }
+  }
 }
 
 export class KlingAIService {
@@ -33,6 +39,36 @@ export class KlingAIService {
         "Kling AI API keys not configured. Image generation will be disabled."
       )
     }
+  }
+
+  /**
+   * JWT トークンを生成
+   */
+  private generateJWT(): string {
+    const header = {
+      alg: "HS256",
+      typ: "JWT",
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const payload = {
+      iss: this.accessKey,
+      exp: now + 1800, // 30分後に期限切れ
+      nbf: now - 5, // 5秒前から有効
+    }
+
+    const base64Header = Buffer.from(JSON.stringify(header))
+      .toString("base64url")
+    const base64Payload = Buffer.from(JSON.stringify(payload))
+      .toString("base64url")
+
+    const signatureInput = `${base64Header}.${base64Payload}`
+    const signature = crypto
+      .createHmac("sha256", this.secretKey)
+      .update(signatureInput)
+      .digest("base64url")
+
+    return `${base64Header}.${base64Payload}.${signature}`
   }
 
   /**
@@ -56,40 +92,53 @@ export class KlingAIService {
         ingredients
       )
 
+      console.log("Kling AI: Generating image with prompt:", prompt.substring(0, 100) + "...")
+
+      // JWTトークンを生成
+      const token = this.generateJWT()
+
       // 画像生成をリクエスト
       const response = await fetch(`${this.baseUrl}/images/generations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.accessKey}`,
-          "X-Secret-Key": this.secretKey,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          model: "kling-v1",
           prompt,
           negative_prompt:
-            "blurry, low quality, unappetizing, messy, dark, raw ingredients",
-          model: "kling-v1",
+            "blurry, low quality, unappetizing, messy, dark, raw ingredients, text, watermark",
+          n: 1,
           aspect_ratio: "1:1",
-          image_count: 1,
-        } as KlingImageGenerationRequest),
+        }),
       })
 
+      const responseText = await response.text()
+      console.log("Kling AI response status:", response.status)
+      console.log("Kling AI response:", responseText.substring(0, 500))
+
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Kling AI API error:", response.status, errorText)
+        console.error("Kling AI API error:", response.status, responseText)
         return null
       }
 
-      const data: KlingImageGenerationResponse = await response.json()
+      const data: KlingImageGenerationResponse = JSON.parse(responseText)
+
+      if (data.code !== 0) {
+        console.error("Kling AI error:", data.message)
+        return null
+      }
 
       // タスクIDがある場合は、画像生成が完了するまで待機
-      if (data.task_id && data.status === "processing") {
-        return await this.waitForImageGeneration(data.task_id)
+      if (data.data?.task_id) {
+        console.log("Kling AI task created:", data.data.task_id)
+        return await this.waitForImageGeneration(data.data.task_id)
       }
 
       // 即座に画像URLが返ってきた場合
-      if (data.images && data.images.length > 0) {
-        return data.images[0].url
+      if (data.data?.task_result?.images && data.data.task_result.images.length > 0) {
+        return data.data.task_result.images[0].url
       }
 
       return null
@@ -104,34 +153,41 @@ export class KlingAIService {
    */
   private async waitForImageGeneration(
     taskId: string,
-    maxRetries: number = 30,
-    retryDelay: number = 2000
+    maxRetries: number = 60,
+    retryDelay: number = 3000
   ): Promise<string | null> {
+    const token = this.generateJWT()
+
     for (let i = 0; i < maxRetries; i++) {
       try {
+        console.log(`Kling AI: Checking task status (attempt ${i + 1}/${maxRetries})...`)
+
         const response = await fetch(
           `${this.baseUrl}/images/generations/${taskId}`,
           {
             headers: {
-              Authorization: `Bearer ${this.accessKey}`,
-              "X-Secret-Key": this.secretKey,
+              Authorization: `Bearer ${token}`,
             },
           }
         )
 
         if (!response.ok) {
-          console.error("Failed to check image generation status")
+          console.error("Failed to check image generation status:", response.status)
           return null
         }
 
         const data: KlingImageGenerationResponse = await response.json()
+        console.log("Kling AI task status:", data.data?.task_status)
 
-        if (data.status === "success" && data.images && data.images.length > 0) {
-          return data.images[0].url
+        if (data.data?.task_status === "succeed" &&
+            data.data?.task_result?.images &&
+            data.data.task_result.images.length > 0) {
+          console.log("Kling AI: Image generated successfully!")
+          return data.data.task_result.images[0].url
         }
 
-        if (data.status === "failed") {
-          console.error("Image generation failed")
+        if (data.data?.task_status === "failed") {
+          console.error("Image generation failed:", data.data?.task_status_msg)
           return null
         }
 
@@ -143,7 +199,7 @@ export class KlingAIService {
       }
     }
 
-    console.warn("Image generation timed out")
+    console.warn("Image generation timed out after", maxRetries * retryDelay / 1000, "seconds")
     return null
   }
 
@@ -158,12 +214,13 @@ export class KlingAIService {
     // 主要な食材を抽出（最初の3つ）
     const mainIngredients = ingredients.slice(0, 3).join(", ")
 
-    return `Professional food photography of ${title}. ${description}.
-Made with ${mainIngredients}.
-The dish is beautifully plated on a white ceramic plate,
-with natural lighting, shallow depth of field,
-top-down view, restaurant quality presentation,
-appetizing, vibrant colors, high resolution, detailed texture.`
+    return `Professional food photography of Japanese home cooking: ${title}.
+A delicious ${description || "home-cooked meal"}.
+Main ingredients: ${mainIngredients || "various fresh ingredients"}.
+Beautifully plated on a ceramic dish, natural daylight from window,
+shallow depth of field, top-down angle, home kitchen setting,
+warm and appetizing, vibrant colors, steam rising,
+high resolution, photorealistic, magazine quality.`
   }
 
   /**
