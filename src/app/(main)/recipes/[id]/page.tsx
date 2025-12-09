@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "@/stores/toast-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -120,11 +121,12 @@ export default function RecipeDetailPage({
 
         const data = await response.json()
         setRecipe({ ...recipe, image_url: data.image_url })
+        toast.success("画像を更新しました")
       }
       reader.readAsDataURL(file)
     } catch (error) {
       console.error("Error uploading image:", error)
-      alert("画像のアップロードに失敗しました")
+      toast.error("画像のアップロードに失敗しました")
     } finally {
       setIsUploadingImage(false)
     }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "@/stores/toast-store"
 import {
   Dialog,
   DialogContent,
@@ -52,6 +53,7 @@ export function CookingLogDialog({
       setOpen(false)
       setNotes("")
       setRating(0)
+      toast.success("調理記録を保存しました")
 
       // コールバックを実行
       if (onSuccess) {
@@ -59,7 +61,7 @@ export function CookingLogDialog({
       }
     } catch (error) {
       console.error("Error creating cooking log:", error)
-      alert("調理記録の保存に失敗しました")
+      toast.error("調理記録の保存に失敗しました")
     } finally {
       setIsSubmitting(false)
     }

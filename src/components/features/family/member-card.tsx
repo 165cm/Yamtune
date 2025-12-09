@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "@/stores/toast-store"
 import { Member, MemberFood, FoodStatus } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -83,9 +84,13 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
       if (response.ok) {
         onDelete(member.id)
         setShowDeleteDialog(false)
+        toast.success("メンバーを削除しました")
+      } else {
+        toast.error("メンバーの削除に失敗しました")
       }
     } catch (error) {
       console.error("Failed to delete member:", error)
+      toast.error("メンバーの削除に失敗しました")
     } finally {
       setIsDeleting(false)
     }
@@ -111,9 +116,13 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
         setNewFoodName("")
         setNewFoodStatus("dislike")
         setShowAddFoodDialog(false)
+        toast.success("登録しました")
+      } else {
+        toast.error("登録に失敗しました")
       }
     } catch (error) {
       console.error("Failed to add food:", error)
+      toast.error("登録に失敗しました")
     } finally {
       setIsAddingFood(false)
     }
@@ -127,9 +136,13 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
 
       if (response.ok) {
         setFoods(foods.filter((f) => f.id !== foodId))
+        toast.success("削除しました")
+      } else {
+        toast.error("削除に失敗しました")
       }
     } catch (error) {
       console.error("Failed to delete food:", error)
+      toast.error("削除に失敗しました")
     }
   }
 
