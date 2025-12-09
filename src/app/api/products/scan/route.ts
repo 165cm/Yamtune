@@ -241,8 +241,14 @@ export async function POST(request: Request) {
 
     if (userProductError) {
       console.error("User product insert error:", JSON.stringify(userProductError))
-      // ユーザー商品の紐付けエラーは致命的ではないので続行
+      // user_productsへの保存が失敗した場合はエラーを返す
+      return NextResponse.json(
+        { error: `商品の紐付けに失敗しました: ${userProductError.message}` },
+        { status: 500 }
+      )
     }
+
+    console.log("User product linked successfully for user:", user.id)
 
     console.log("Scan completed successfully")
 
