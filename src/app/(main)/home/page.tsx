@@ -210,7 +210,7 @@ export default function HomePage() {
                     <div className="flex gap-2 text-xs text-muted-foreground">
                       <span>{recipe.servings}人分</span>
                       <span>•</span>
-                      <span>{recipe.cooking_time_minutes}分</span>
+                      <span>{recipe.cooking_time}分</span>
                       <span>•</span>
                       <span>{recipe.difficulty}</span>
                     </div>
