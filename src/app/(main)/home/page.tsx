@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
 import RecipeGenerator from "@/components/features/recipes/recipe-generator"
-import { Package, Sparkles, Loader2, ShoppingBag, ChefHat, Heart } from "lucide-react"
+import { Package, Sparkles, ShoppingBag, ChefHat, Heart } from "lucide-react"
+import { ProductCardSkeleton, RecipeCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 
 export default function HomePage() {
   const router = useRouter()
@@ -82,18 +83,14 @@ export default function HomePage() {
     }, 100)
   }
 
-  const handleDeleteProduct = async (id: string) => {
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: "DELETE",
-      })
+  const handleDeleteProduct = (id: string) => {
+    setProducts(products.filter((p) => p.id !== id))
+  }
 
-      if (response.ok) {
-        setProducts(products.filter((p) => p.id !== id))
-      }
-    } catch (error) {
-      console.error("Failed to delete product:", error)
-    }
+  const handleUpdateProduct = (updatedProduct: any) => {
+    setProducts(products.map((p) =>
+      p.id === updatedProduct.id ? updatedProduct : p
+    ))
   }
 
   const handleLogout = async () => {
@@ -102,11 +99,7 @@ export default function HomePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">読み込み中...</div>
-      </div>
-    )
+    return <FullPageLoader />
   }
 
   return (
@@ -132,12 +125,10 @@ export default function HomePage() {
           </h2>
 
           {isLoadingProducts ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                <span className="ml-3 text-muted-foreground">読み込み中...</span>
-              </CardContent>
-            </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+              <ProductCardSkeleton />
+              <ProductCardSkeleton />
+            </div>
           ) : products.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
               {products.map((product) => (
@@ -145,6 +136,7 @@ export default function HomePage() {
                   key={product.id}
                   product={product}
                   onDelete={handleDeleteProduct}
+                  onUpdate={handleUpdateProduct}
                 />
               ))}
             </div>

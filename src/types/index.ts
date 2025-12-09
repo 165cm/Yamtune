@@ -20,14 +20,13 @@ export interface Member {
   created_at: string
 }
 
-export type FoodCategory = "like" | "dislike" | "allergy"
+export type FoodStatus = "like" | "dislike" | "neutral"
 
 export interface MemberFood {
   id: string
   member_id: string
   food_name: string
-  category: FoodCategory
-  severity?: string
+  status: FoodStatus
   notes?: string
   created_at: string
 }

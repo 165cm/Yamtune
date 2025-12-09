@@ -14,10 +14,10 @@ import {
   Beef,
   Wheat,
   Filter,
-  Loader2,
   CookingPot,
   ArrowLeft,
 } from "lucide-react"
+import { RecipeCardSkeleton } from "@/components/ui/skeleton"
 
 interface Recipe {
   id: string
@@ -112,12 +112,11 @@ export default function RecipesPage() {
 
       {/* レシピリスト */}
       {isLoading ? (
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            <span className="ml-3 text-muted-foreground">読み込み中...</span>
-          </CardContent>
-        </Card>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <RecipeCardSkeleton />
+          <RecipeCardSkeleton />
+          <RecipeCardSkeleton />
+        </div>
       ) : recipes.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recipes.map((recipe) => (
