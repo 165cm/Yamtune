@@ -83,18 +83,14 @@ export default function HomePage() {
     }, 100)
   }
 
-  const handleDeleteProduct = async (id: string) => {
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: "DELETE",
-      })
+  const handleDeleteProduct = (id: string) => {
+    setProducts(products.filter((p) => p.id !== id))
+  }
 
-      if (response.ok) {
-        setProducts(products.filter((p) => p.id !== id))
-      }
-    } catch (error) {
-      console.error("Failed to delete product:", error)
-    }
+  const handleUpdateProduct = (updatedProduct: any) => {
+    setProducts(products.map((p) =>
+      p.id === updatedProduct.id ? updatedProduct : p
+    ))
   }
 
   const handleLogout = async () => {
@@ -140,6 +136,7 @@ export default function HomePage() {
                   key={product.id}
                   product={product}
                   onDelete={handleDeleteProduct}
+                  onUpdate={handleUpdateProduct}
                 />
               ))}
             </div>
