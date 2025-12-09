@@ -218,7 +218,7 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
     console.log("Recipe generated:", recipeData.title)
     console.log("Recipe data from AI:", JSON.stringify(recipeData, null, 2))
 
-    // データベースにレシピを保存
+    // データベースにレシピを保存（プレースホルダー画像付き）
     const insertData = {
       user_id: user.id,
       title: recipeData.title || "無題のレシピ",
@@ -227,6 +227,7 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
       cooking_time: recipeData.cooking_time || null,
       difficulty: recipeData.difficulty || "普通",
       nutrition: recipeData.nutrition || {},
+      image_url: "/images/recipe-placeholder.svg", // デフォルトのプレースホルダー画像
     }
 
     console.log("Inserting recipe with data:", JSON.stringify(insertData, null, 2))
