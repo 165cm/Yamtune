@@ -91,29 +91,55 @@ export async function PATCH(
   }
 
   const recipeId = params.id
-  const { isFavorite } = await request.json()
+  const body = await request.json()
 
-  // user_recipesレコードを更新または作成
-  const { error } = await (supabase as any)
-    .from("user_recipes")
-    .upsert(
-      {
-        user_id: user.id,
-        recipe_id: recipeId,
-        is_favorite: isFavorite,
-      },
-      {
-        onConflict: "user_id,recipe_id",
-      }
-    )
+  // 画像更新の場合
+  if (body.image_url !== undefined) {
+    const { error } = await (supabase as any)
+      .from("recipes")
+      .update({
+        image_url: body.image_url,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", recipeId)
+      .eq("user_id", user.id)
 
-  if (error) {
-    console.error("Error updating favorite status:", error)
-    return NextResponse.json(
-      { error: "Failed to update favorite status" },
-      { status: 500 }
-    )
+    if (error) {
+      console.error("Error updating recipe image:", error)
+      return NextResponse.json(
+        { error: "Failed to update recipe image" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, image_url: body.image_url })
   }
 
-  return NextResponse.json({ success: true, isFavorite })
+  // お気に入り更新の場合
+  if (body.isFavorite !== undefined) {
+    const { error } = await (supabase as any)
+      .from("user_recipes")
+      .upsert(
+        {
+          user_id: user.id,
+          recipe_id: recipeId,
+          is_favorite: body.isFavorite,
+        },
+        {
+          onConflict: "user_id,recipe_id",
+        }
+      )
+
+    if (error) {
+      console.error("Error updating favorite status:", error)
+      return NextResponse.json(
+        { error: "Failed to update favorite status" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, isFavorite: body.isFavorite })
+  }
+
+  return NextResponse.json({ error: "No valid update field provided" }, { status: 400 })
 }

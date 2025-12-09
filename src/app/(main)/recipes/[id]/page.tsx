@@ -16,6 +16,8 @@ import {
   Wheat,
   Droplet,
   CheckCircle2,
+  Camera,
+  Loader2,
 } from "lucide-react"
 
 interface Recipe {
@@ -56,6 +58,7 @@ export default function RecipeDetailPage({
   const [isLoading, setIsLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   useEffect(() => {
     fetchRecipe()
@@ -93,6 +96,37 @@ export default function RecipeDetailPage({
       console.error("Error toggling favorite:", error)
     } finally {
       setIsTogglingFavorite(false)
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !recipe) return
+
+    setIsUploadingImage(true)
+    try {
+      // ファイルをBase64に変換
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string
+
+        const response = await fetch(`/api/recipes/${recipe.id}/image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64 }),
+        })
+
+        if (!response.ok) throw new Error("Failed to upload image")
+
+        const data = await response.json()
+        setRecipe({ ...recipe, image_url: data.image_url })
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      alert("画像のアップロードに失敗しました")
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
@@ -186,18 +220,46 @@ export default function RecipeDetailPage({
         </CardHeader>
       </Card>
 
-      {/* AI生成画像 */}
-      {recipe.image_url && (
-        <Card className="mb-6 overflow-hidden">
-          <CardContent className="p-0">
-            <img
-              src={recipe.image_url}
-              alt={recipe.title}
-              className="w-full h-auto object-cover max-h-96"
+      {/* レシピ画像（クリックで変更可能） */}
+      <Card className="mb-6 overflow-hidden">
+        <CardContent className="p-0 relative">
+          <label className="cursor-pointer block">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={isUploadingImage}
             />
-          </CardContent>
-        </Card>
-      )}
+            {recipe.image_url ? (
+              <img
+                src={recipe.image_url}
+                alt={recipe.title}
+                className="w-full h-auto object-cover max-h-96"
+              />
+            ) : (
+              <div className="w-full h-48 bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                  <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">タップして画像を追加</p>
+                </div>
+              </div>
+            )}
+            {/* オーバーレイ */}
+            <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center group">
+              {isUploadingImage ? (
+                <div className="bg-white/90 rounded-full p-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="bg-white/90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="w-6 h-6 text-primary" />
+                </div>
+              )}
+            </div>
+          </label>
+        </CardContent>
+      </Card>
 
       {/* 栄養情報 */}
       {recipe.nutrition && (
