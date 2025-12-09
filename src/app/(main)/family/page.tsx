@@ -8,6 +8,7 @@ import { useFamilyStore } from "@/stores/family-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, ArrowLeft } from "lucide-react"
+import { MemberCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 import MemberCard from "@/components/features/family/member-card"
 import AddMemberDialog from "@/components/features/family/add-member-dialog"
 import { Member } from "@/types"
@@ -65,11 +66,7 @@ export default function FamilyPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">読み込み中...</div>
-      </div>
-    )
+    return <FullPageLoader />
   }
 
   return (

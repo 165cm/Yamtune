@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag } from "lucide-react"
+import { FullPageLoader } from "@/components/ui/skeleton"
 import {
   Dialog,
   DialogContent,
@@ -100,11 +101,7 @@ export default function SettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">読み込み中...</div>
-      </div>
-    )
+    return <FullPageLoader />
   }
 
   return (

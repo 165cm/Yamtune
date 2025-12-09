@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
 import RecipeGenerator from "@/components/features/recipes/recipe-generator"
-import { Package, Sparkles, Loader2, ShoppingBag, ChefHat, Heart } from "lucide-react"
+import { Package, Sparkles, ShoppingBag, ChefHat, Heart } from "lucide-react"
+import { ProductCardSkeleton, RecipeCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 
 export default function HomePage() {
   const router = useRouter()
@@ -102,11 +103,7 @@ export default function HomePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">読み込み中...</div>
-      </div>
-    )
+    return <FullPageLoader />
   }
 
   return (
@@ -132,12 +129,10 @@ export default function HomePage() {
           </h2>
 
           {isLoadingProducts ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                <span className="ml-3 text-muted-foreground">読み込み中...</span>
-              </CardContent>
-            </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+              <ProductCardSkeleton />
+              <ProductCardSkeleton />
+            </div>
           ) : products.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
               {products.map((product) => (
