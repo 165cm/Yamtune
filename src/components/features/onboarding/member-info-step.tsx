@@ -5,11 +5,17 @@ import { useRouter } from "next/navigation"
 import { useOnboardingStore } from "@/stores/onboarding-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useFamilyStore } from "@/stores/family-store"
+import { foodPresets, getFoodEmoji } from "@/lib/food-presets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Baby, Plus, X } from "lucide-react"
+import { Baby, Plus, X, Heart, ThumbsDown } from "lucide-react"
+
+interface FoodItem {
+  name: string
+  status: "like" | "dislike"
+}
 
 export default function MemberInfoStep() {
   const router = useRouter()
@@ -19,20 +25,28 @@ export default function MemberInfoStep() {
 
   const [name, setName] = useState(memberData.name || "")
   const [birthDate, setBirthDate] = useState(memberData.birthDate || "")
-  const [dislikes, setDislikes] = useState<string[]>(memberData.dislikes || [])
-  const [newDislike, setNewDislike] = useState("")
+  const [foods, setFoods] = useState<FoodItem[]>(
+    memberData.dislikes?.map((d: string) => ({ name: d, status: "dislike" as const })) || []
+  )
+  const [newFood, setNewFood] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
-  const handleAddDislike = () => {
-    if (newDislike.trim() && !dislikes.includes(newDislike.trim())) {
-      setDislikes([...dislikes, newDislike.trim()])
-      setNewDislike("")
+  const addFood = (foodName: string, status: "like" | "dislike") => {
+    if (foodName.trim() && !foods.some(f => f.name === foodName)) {
+      setFoods([...foods, { name: foodName.trim(), status }])
     }
   }
 
-  const handleRemoveDislike = (dislike: string) => {
-    setDislikes(dislikes.filter((d) => d !== dislike))
+  const handleAddCustomFood = (status: "like" | "dislike") => {
+    if (newFood.trim()) {
+      addFood(newFood.trim(), status)
+      setNewFood("")
+    }
+  }
+
+  const handleRemoveFood = (foodName: string) => {
+    setFoods(foods.filter((f) => f.name !== foodName))
   }
 
   const handleComplete = async () => {
@@ -85,16 +99,16 @@ export default function MemberInfoStep() {
       setMembers([member])
       setSelectedMember(member)
 
-      // 3. 嫌いな食べ物を登録
-      if (dislikes.length > 0) {
+      // 3. 食べ物の好き嫌いを登録
+      if (foods.length > 0) {
         await Promise.all(
-          dislikes.map((food) =>
+          foods.map((food) =>
             fetch(`/api/members/${member.id}/foods`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                food_name: food,
-                category: "dislike",
+                food_name: food.name,
+                status: food.status,
               }),
             })
           )
@@ -102,7 +116,11 @@ export default function MemberInfoStep() {
       }
 
       // メンバーデータを保存して次のステップへ
-      setMemberData({ name, birthDate, dislikes })
+      setMemberData({
+        name,
+        birthDate,
+        dislikes: foods.filter(f => f.status === "dislike").map(f => f.name)
+      })
       nextStep()
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました")
@@ -139,6 +157,18 @@ export default function MemberInfoStep() {
       setIsSubmitting(false)
     }
   }
+
+  // 登録済みの食べ物を除外したプリセット
+  const availableDislikePresets = foodPresets.dislike.filter(
+    p => !foods.some(f => f.name === p.name)
+  ).slice(0, 8)
+
+  const availableLikePresets = foodPresets.like.filter(
+    p => !foods.some(f => f.name === p.name)
+  ).slice(0, 8)
+
+  const dislikedFoods = foods.filter(f => f.status === "dislike")
+  const likedFoods = foods.filter(f => f.status === "like")
 
   return (
     <Card className="border-2">
@@ -181,42 +211,42 @@ export default function MemberInfoStep() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="dislikes">苦手な食べ物（任意）</Label>
-            <div className="flex gap-2">
-              <Input
-                id="dislikes"
-                placeholder="例: ピーマン"
-                value={newDislike}
-                onChange={(e) => setNewDislike(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    handleAddDislike()
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={handleAddDislike}
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
+          {/* 苦手な食べ物 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ThumbsDown className="w-4 h-4 text-red-600" />
+              <Label>苦手な食べ物（任意）</Label>
             </div>
-            {dislikes.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {dislikes.map((dislike) => (
+
+            {/* プリセットタグ */}
+            <div className="flex flex-wrap gap-2">
+              {availableDislikePresets.map((preset) => (
+                <Button
+                  key={preset.name}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 hover:bg-red-50 hover:border-red-300"
+                  onClick={() => addFood(preset.name, "dislike")}
+                >
+                  {preset.emoji} {preset.name}
+                </Button>
+              ))}
+            </div>
+
+            {/* 登録済みの苦手な食べ物 */}
+            {dislikedFoods.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {dislikedFoods.map((food) => (
                   <span
-                    key={dislike}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-destructive/10 text-destructive rounded-full text-sm"
+                    key={food.name}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 border border-red-200 rounded-full text-sm"
                   >
-                    {dislike}
+                    {getFoodEmoji(food.name)} {food.name}
                     <button
                       type="button"
-                      onClick={() => handleRemoveDislike(dislike)}
-                      className="hover:bg-destructive/20 rounded-full p-0.5"
+                      onClick={() => handleRemoveFood(food.name)}
+                      className="hover:bg-red-200 rounded-full p-0.5"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -224,6 +254,90 @@ export default function MemberInfoStep() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* 好きな食べ物 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Heart className="w-4 h-4 text-green-600" />
+              <Label>好きな食べ物（任意）</Label>
+            </div>
+
+            {/* プリセットタグ */}
+            <div className="flex flex-wrap gap-2">
+              {availableLikePresets.map((preset) => (
+                <Button
+                  key={preset.name}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 hover:bg-green-50 hover:border-green-300"
+                  onClick={() => addFood(preset.name, "like")}
+                >
+                  {preset.emoji} {preset.name}
+                </Button>
+              ))}
+            </div>
+
+            {/* 登録済みの好きな食べ物 */}
+            {likedFoods.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {likedFoods.map((food) => (
+                  <span
+                    key={food.name}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 border border-green-200 rounded-full text-sm"
+                  >
+                    {getFoodEmoji(food.name)} {food.name}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFood(food.name)}
+                      className="hover:bg-green-200 rounded-full p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* カスタム入力 */}
+          <div className="space-y-2 pt-2 border-t">
+            <Label>その他（手入力）</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="食べ物の名前"
+                value={newFood}
+                onChange={(e) => setNewFood(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    handleAddCustomFood("dislike")
+                  }
+                }}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddCustomFood("dislike")}
+                disabled={!newFood.trim()}
+                className="text-red-600 hover:bg-red-50"
+              >
+                💔
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddCustomFood("like")}
+                disabled={!newFood.trim()}
+                className="text-green-600 hover:bg-green-50"
+              >
+                💚
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               あとから追加・変更することもできます
             </p>
