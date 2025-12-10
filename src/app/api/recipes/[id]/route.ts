@@ -67,10 +67,10 @@ export async function GET(
 
   const isFavorite = userRecipe?.is_favorite || false
 
-  // ユーザーの手持ち商品を取得して材料とマッチング
+  // ユーザーの手持ち商品を取得して材料とマッチング（お気に入り情報も含む）
   const { data: userProducts } = await (supabase as any)
     .from("user_products")
-    .select("products(*)")
+    .select("is_favorite, products(*)")
     .eq("user_id", user.id)
 
   // ユーザーの調味料ストックを取得
@@ -83,7 +83,7 @@ export async function GET(
 
   const matchedProducts: Array<{
     ingredientName: string
-    product: { id: string; name: string; image_url?: string }
+    product: { id: string; name: string; image_url?: string; isFavorite: boolean }
   }> = []
 
   // 調味料ストックとマッチした材料
@@ -126,6 +126,7 @@ export async function GET(
               id: matchedProduct.products.id,
               name: matchedProduct.products.name,
               image_url: matchedProduct.products.image_url,
+              isFavorite: matchedProduct.is_favorite || false,
             },
           })
         }

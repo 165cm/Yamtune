@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import Link from "next/link"
 import { toast } from "@/stores/toast-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +23,8 @@ import {
   ShoppingBag,
   Package,
   Home,
+  Star,
+  ExternalLink,
 } from "lucide-react"
 
 interface Recipe {
@@ -58,6 +61,7 @@ interface MatchedProduct {
     id: string
     name: string
     image_url?: string
+    isFavorite?: boolean
   }
 }
 
@@ -390,9 +394,16 @@ export default function RecipeDetailPage() {
                     <div>
                       <span className="font-medium">{ingredient.name}</span>
                       {!isPantryItem && matchedProduct && (
-                        <p className="text-xs text-green-600">
-                          {matchedProduct.product.name}
-                        </p>
+                        <Link
+                          href={`/products/${matchedProduct.product.id}`}
+                          className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 hover:underline"
+                        >
+                          {matchedProduct.product.isFavorite && (
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          )}
+                          <span>{matchedProduct.product.name}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
                       )}
                     </div>
                   </div>
