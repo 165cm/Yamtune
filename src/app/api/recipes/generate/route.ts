@@ -61,6 +61,14 @@ export async function POST(request: Request) {
       }
     }
 
+    // ユーザーの調味料ストックを取得
+    const { data: pantryData } = await (supabase as any)
+      .from("user_pantry")
+      .select("item_name")
+      .eq("user_id", user.id)
+
+    const pantryItems = pantryData?.map((p: any) => p.item_name) || []
+
     // OpenAI APIでレシピ生成
     const openaiApiKey = process.env.OPENAI_API_KEY
     if (!openaiApiKey) {
@@ -91,13 +99,16 @@ ${productsInfo.map((p: any) => `- ${p.name} (${p.category || "カテゴリ不明
 【栄養情報】
 ${productsInfo.map((p: any) => `${p.name}: ${JSON.stringify(p.nutrition || {})}`).join("\n")}
 
+${pantryItems.length > 0 ? `【家にある調味料】\n${pantryItems.join(", ")}\n※これらの調味料は使用可能です` : ""}
+
 ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(", ")}` : ""}
 
 【要件】
 - 子ども（2〜10歳）が食べやすいレシピ
 - 栄養バランスが良い
 - 調理時間は30分以内が理想
-- 材料は上記の食材を中心に使用（必要に応じて基本的な調味料や野菜は追加可）
+- 材料は上記の食材を中心に使用
+${pantryItems.length > 0 ? "- 上記の「家にある調味料」を積極的に活用してください" : "- 必要に応じて基本的な調味料は追加可"}
 
 以下のJSON形式で返してください：
 {

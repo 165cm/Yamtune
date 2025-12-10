@@ -1,12 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuthStore } from "@/stores/auth-store"
+import { toast } from "@/stores/toast-store"
+import { pantryPresets } from "@/lib/food-presets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag, Loader2 } from "lucide-react"
 import { FullPageLoader } from "@/components/ui/skeleton"
 import {
   Dialog,
@@ -29,6 +32,49 @@ export default function SettingsPage() {
     productCount: 0,
     memberCount: 0,
   })
+  const [pantryItems, setPantryItems] = useState<string[]>([])
+  const [isSavingPantry, setIsSavingPantry] = useState(false)
+
+  const loadPantryItems = useCallback(async () => {
+    try {
+      const response = await fetch("/api/pantry")
+      if (response.ok) {
+        const data = await response.json()
+        setPantryItems(data.items || [])
+      }
+    } catch (error) {
+      console.error("Failed to load pantry items:", error)
+    }
+  }, [])
+
+  const savePantryItems = async (items: string[]) => {
+    setIsSavingPantry(true)
+    try {
+      const response = await fetch("/api/pantry", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      })
+      if (response.ok) {
+        toast.success("調味料ストックを保存しました")
+      } else {
+        toast.error("保存に失敗しました")
+      }
+    } catch (error) {
+      console.error("Failed to save pantry items:", error)
+      toast.error("保存に失敗しました")
+    } finally {
+      setIsSavingPantry(false)
+    }
+  }
+
+  const togglePantryItem = (itemName: string) => {
+    const newItems = pantryItems.includes(itemName)
+      ? pantryItems.filter((item) => item !== itemName)
+      : [...pantryItems, itemName]
+    setPantryItems(newItems)
+    savePantryItems(newItems)
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -38,12 +84,12 @@ export default function SettingsPage() {
         return
       }
       setUser(user)
-      await loadStats()
+      await Promise.all([loadStats(), loadPantryItems()])
       setIsLoading(false)
     }
 
     checkAuth()
-  }, [router, setUser, supabase])
+  }, [router, setUser, supabase, loadPantryItems])
 
   const loadStats = async () => {
     try {
@@ -167,6 +213,54 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">メンバー</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 調味料ストック */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🏠 うちの調味料ストック
+              {isSavingPantry && (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </CardTitle>
+            <CardDescription>
+              いつも家にある調味料を選んでください。レシピ生成時に活用します。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {Object.entries(pantryPresets).map(([key, category]) => (
+              <div key={key} className="space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <span>{category.emoji}</span>
+                  {category.label}
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {category.items.map((item) => (
+                    <label
+                      key={item.name}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                        pantryItems.includes(item.name)
+                          ? "bg-green-50 border-green-300 text-green-800"
+                          : "bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={pantryItems.includes(item.name)}
+                        onCheckedChange={() => togglePantryItem(item.name)}
+                      />
+                      <span className="text-sm">
+                        {item.emoji} {item.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              ✅ 選択した調味料: {pantryItems.length}種類
+            </p>
           </CardContent>
         </Card>
 
