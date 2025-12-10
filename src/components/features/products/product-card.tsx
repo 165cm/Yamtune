@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "@/stores/toast-store"
 import { getCategoryEmoji } from "@/lib/food-presets"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Flame, Beef, Wheat, ChevronDown, ChevronUp, Pencil, Heart, ThumbsDown } from "lucide-react"
+import { Trash2, Flame, Beef, Wheat, ChevronDown, ChevronUp, Pencil, Heart, ThumbsDown, ExternalLink } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onDelete, onUpdate, familyPreferences = [] }: ProductCardProps) {
+  const router = useRouter()
   const [showAllNutrition, setShowAllNutrition] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -39,6 +41,14 @@ export default function ProductCard({ product, onDelete, onUpdate, familyPrefere
   const [editName, setEditName] = useState(product.name)
   const [editCategory, setEditCategory] = useState(product.category || "")
   const [currentProduct, setCurrentProduct] = useState(product)
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // ボタンやダイアログ内のクリックは無視
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="dialog"]')) {
+      return
+    }
+    router.push(`/products/${currentProduct.id}`)
+  }
 
   const nutrition = currentProduct.nutrition || currentProduct.nutrition_per_100g || {}
 
@@ -158,11 +168,14 @@ export default function ProductCard({ product, onDelete, onUpdate, familyPrefere
 
   return (
     <>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={handleCardClick}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <div>
-              <CardTitle className="text-lg line-clamp-2">{currentProduct.name}</CardTitle>
+            <div className="flex-1">
+              <CardTitle className="text-lg line-clamp-2 flex items-center gap-2">
+                {currentProduct.name}
+                <ExternalLink className="w-4 h-4 text-muted-foreground opacity-50 flex-shrink-0" />
+              </CardTitle>
               {currentProduct.category && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {getCategoryEmoji(currentProduct.category)} {currentProduct.category}

@@ -31,10 +31,10 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
     }
 
-    // ユーザーがこの商品を所有しているか確認
-    const { data: userProduct } = await supabase
+    // ユーザーがこの商品を所有しているか確認 + お気に入り情報を取得
+    const { data: userProduct } = await (supabase as any)
       .from("user_products")
-      .select("*")
+      .select("*, is_favorite")
       .eq("user_id", user.id)
       .eq("product_id", id)
       .single()
@@ -43,7 +43,11 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    return NextResponse.json(product)
+    // お気に入り情報を含めて返す
+    return NextResponse.json({
+      ...(product as any),
+      is_favorite: (userProduct as any).is_favorite || false,
+    })
   } catch (error) {
     console.error("Get product error:", error)
     return NextResponse.json(
@@ -83,16 +87,48 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, category } = body
+    const { name, category, food_name, is_favorite } = body
+
+    // お気に入り更新の場合はuser_productsを更新
+    if (is_favorite !== undefined) {
+      const { error: favError } = await (supabase as any)
+        .from("user_products")
+        .update({ is_favorite })
+        .eq("user_id", user.id)
+        .eq("product_id", id)
+
+      if (favError) {
+        console.error("Favorite update error:", favError)
+        return NextResponse.json(
+          { error: "Failed to update favorite" },
+          { status: 500 }
+        )
+      }
+
+      // 商品情報と共に返す
+      const { data: product } = await (supabase as any)
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single()
+
+      return NextResponse.json({
+        ...(product as any),
+        is_favorite,
+      })
+    }
 
     // 商品を更新
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    }
+    if (name) updateData.name = name
+    if (category !== undefined) updateData.category = category
+    if (food_name !== undefined) updateData.food_name = food_name
+
     const { data: updatedProduct, error: updateError } = await (supabase as any)
       .from("products")
-      .update({
-        ...(name && { name }),
-        ...(category !== undefined && { category }),
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", id)
       .select()
       .single()
