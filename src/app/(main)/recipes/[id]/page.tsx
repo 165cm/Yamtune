@@ -21,6 +21,7 @@ import {
   Loader2,
   ShoppingBag,
   Package,
+  Home,
 } from "lucide-react"
 
 interface Recipe {
@@ -66,6 +67,7 @@ export default function RecipeDetailPage() {
   const id = params.id as string
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [matchedProducts, setMatchedProducts] = useState<MatchedProduct[]>([])
+  const [matchedPantryItems, setMatchedPantryItems] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
@@ -81,6 +83,9 @@ export default function RecipeDetailPage() {
       setIsFavorite(data.recipe.isFavorite)
       if (data.matchedProducts) {
         setMatchedProducts(data.matchedProducts)
+      }
+      if (data.matchedPantryItems) {
+        setMatchedPantryItems(data.matchedPantryItems)
       }
     } catch (error) {
       console.error("Error fetching recipe:", error)
@@ -338,36 +343,55 @@ export default function RecipeDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">材料</CardTitle>
-            {matchedProducts.length > 0 && (
-              <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
-                <Package className="w-3 h-3" />
-                {matchedProducts.length}品の手持ち商品
-              </Badge>
-            )}
+            <div className="flex gap-2">
+              {matchedPantryItems.length > 0 && (
+                <Badge variant="outline" className="gap-1 bg-amber-50 text-amber-700 border-amber-200">
+                  <Home className="w-3 h-3" />
+                  {matchedPantryItems.length}品が家にある
+                </Badge>
+              )}
+              {matchedProducts.length > 0 && (
+                <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
+                  <Package className="w-3 h-3" />
+                  {matchedProducts.length}品の手持ち商品
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {recipe.ingredients.map((ingredient, index) => {
-              const matched = matchedProducts.find(
+              const matchedProduct = matchedProducts.find(
                 (mp) => mp.ingredientName === ingredient.name
               )
+              const isPantryItem = matchedPantryItems.includes(ingredient.name)
+
+              // スタイルを決定
+              let bgClass = ""
+              if (isPantryItem) {
+                bgClass = "bg-amber-50 -mx-4 px-4 rounded"
+              } else if (matchedProduct) {
+                bgClass = "bg-green-50 -mx-4 px-4 rounded"
+              }
+
               return (
                 <div
                   key={index}
-                  className={`flex justify-between items-center py-2 border-b last:border-b-0 ${
-                    matched ? "bg-green-50 -mx-4 px-4 rounded" : ""
-                  }`}
+                  className={`flex justify-between items-center py-2 border-b last:border-b-0 ${bgClass}`}
                 >
                   <div className="flex items-center gap-2">
-                    {matched && (
+                    {isPantryItem && (
+                      <Home className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    )}
+                    {!isPantryItem && matchedProduct && (
                       <ShoppingBag className="w-4 h-4 text-green-600 flex-shrink-0" />
                     )}
                     <div>
                       <span className="font-medium">{ingredient.name}</span>
-                      {matched && (
+                      {!isPantryItem && matchedProduct && (
                         <p className="text-xs text-green-600">
-                          {matched.product.name}
+                          {matchedProduct.product.name}
                         </p>
                       )}
                     </div>
