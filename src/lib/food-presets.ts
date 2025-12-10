@@ -107,3 +107,87 @@ export function getCategoryEmoji(category: string): string {
 
   return "📦"
 }
+
+// 調味料ストックのプリセット
+export const pantryPresets = {
+  basic: {
+    label: "基本調味料",
+    emoji: "🧂",
+    items: [
+      { name: "醤油", emoji: "🫗" },
+      { name: "みりん", emoji: "🍶" },
+      { name: "料理酒", emoji: "🍶" },
+      { name: "塩", emoji: "🧂" },
+      { name: "砂糖", emoji: "🍬" },
+      { name: "酢", emoji: "🫗" },
+      { name: "味噌", emoji: "🫕" },
+    ],
+  },
+  oils: {
+    label: "油類",
+    emoji: "🫒",
+    items: [
+      { name: "サラダ油", emoji: "🫒" },
+      { name: "ごま油", emoji: "🫒" },
+      { name: "オリーブオイル", emoji: "🫒" },
+      { name: "バター", emoji: "🧈" },
+    ],
+  },
+  sauces: {
+    label: "ソース・たれ",
+    emoji: "🥫",
+    items: [
+      { name: "めんつゆ", emoji: "🫗" },
+      { name: "ポン酢", emoji: "🍋" },
+      { name: "ソース", emoji: "🥫" },
+      { name: "ケチャップ", emoji: "🍅" },
+      { name: "マヨネーズ", emoji: "🥚" },
+      { name: "焼肉のたれ", emoji: "🥩" },
+    ],
+  },
+  spices: {
+    label: "スパイス・香辛料",
+    emoji: "🌶️",
+    items: [
+      { name: "こしょう", emoji: "🌶️" },
+      { name: "にんにく", emoji: "🧄" },
+      { name: "しょうが", emoji: "🫚" },
+      { name: "鷹の爪", emoji: "🌶️" },
+      { name: "カレー粉", emoji: "🍛" },
+    ],
+  },
+  dashi: {
+    label: "だし・スープ",
+    emoji: "🍲",
+    items: [
+      { name: "だしの素", emoji: "🍲" },
+      { name: "コンソメ", emoji: "🥣" },
+      { name: "鶏ガラスープの素", emoji: "🐔" },
+      { name: "中華だし", emoji: "🥡" },
+    ],
+  },
+  others: {
+    label: "その他",
+    emoji: "📦",
+    items: [
+      { name: "片栗粉", emoji: "🌾" },
+      { name: "小麦粉", emoji: "🌾" },
+      { name: "パン粉", emoji: "🍞" },
+      { name: "ごま", emoji: "🫘" },
+    ],
+  },
+}
+
+// すべての調味料をフラットな配列で取得
+export function getAllPantryItems(): Array<{ name: string; emoji: string; category: string }> {
+  const items: Array<{ name: string; emoji: string; category: string }> = []
+  for (const [categoryKey, category] of Object.entries(pantryPresets)) {
+    for (const item of category.items) {
+      items.push({
+        ...item,
+        category: category.label,
+      })
+    }
+  }
+  return items
+}
