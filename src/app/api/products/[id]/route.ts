@@ -34,7 +34,7 @@ export async function GET(
     // ユーザーがこの商品を所有しているか確認 + お気に入り情報を取得
     const { data: userProduct } = await (supabase as any)
       .from("user_products")
-      .select("*, is_favorite")
+      .select("*")
       .eq("user_id", user.id)
       .eq("product_id", id)
       .single()
