@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "@/stores/toast-store"
 import { Member, MemberFood, FoodStatus } from "@/types"
 import { foodPresets, getFoodEmoji } from "@/lib/food-presets"
@@ -39,11 +39,7 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
   const [newFoodStatus, setNewFoodStatus] = useState<FoodStatus>("dislike")
   const [isAddingFood, setIsAddingFood] = useState(false)
 
-  useEffect(() => {
-    loadFoods()
-  }, [member.id])
-
-  const loadFoods = async () => {
+  const loadFoods = useCallback(async () => {
     try {
       const response = await fetch(`/api/members/${member.id}/foods`)
       if (response.ok) {
@@ -55,7 +51,11 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
     } finally {
       setIsLoadingFoods(false)
     }
-  }
+  }, [member.id])
+
+  useEffect(() => {
+    loadFoods()
+  }, [loadFoods])
 
   const calculateAge = (birthDate: string) => {
     const today = new Date()
