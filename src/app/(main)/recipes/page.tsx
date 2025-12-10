@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,11 +43,7 @@ export default function RecipesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
 
-  useEffect(() => {
-    fetchRecipes()
-  }, [showFavoritesOnly])
-
-  const fetchRecipes = async () => {
+  const fetchRecipes = useCallback(async () => {
     setIsLoading(true)
     try {
       const url = showFavoritesOnly
@@ -63,7 +59,11 @@ export default function RecipesPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [showFavoritesOnly])
+
+  useEffect(() => {
+    fetchRecipes()
+  }, [fetchRecipes])
 
   const difficultyColor = (difficulty: string) => {
     return {

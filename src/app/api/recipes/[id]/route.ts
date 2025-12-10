@@ -67,6 +67,47 @@ export async function GET(
 
   const isFavorite = userRecipe?.is_favorite || false
 
+  // ユーザーの手持ち商品を取得して材料とマッチング
+  const { data: userProducts } = await (supabase as any)
+    .from("user_products")
+    .select("products(*)")
+    .eq("user_id", user.id)
+
+  const matchedProducts: Array<{
+    ingredientName: string
+    product: { id: string; name: string; image_url?: string }
+  }> = []
+
+  if (userProducts && ingredients) {
+    for (const ingredient of ingredients) {
+      const ingredientName = ingredient.name.toLowerCase()
+      // 商品名または food_name で材料とマッチング
+      const matchedProduct = userProducts.find((up: any) => {
+        const product = up.products
+        if (!product) return false
+        const productName = product.name?.toLowerCase() || ""
+        const foodName = product.food_name?.toLowerCase() || ""
+        // 材料名が商品名に含まれる、または商品名が材料名に含まれる
+        return (
+          productName.includes(ingredientName) ||
+          ingredientName.includes(productName) ||
+          (foodName && foodName.includes(ingredientName)) ||
+          (foodName && ingredientName.includes(foodName))
+        )
+      })
+      if (matchedProduct?.products) {
+        matchedProducts.push({
+          ingredientName: ingredient.name,
+          product: {
+            id: matchedProduct.products.id,
+            name: matchedProduct.products.name,
+            image_url: matchedProduct.products.image_url,
+          },
+        })
+      }
+    }
+  }
+
   return NextResponse.json({
     recipe: {
       ...recipe,
@@ -74,6 +115,7 @@ export async function GET(
       steps: steps || [],
       isFavorite,
     },
+    matchedProducts,
   })
 }
 
