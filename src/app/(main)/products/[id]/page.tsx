@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { toast } from "@/stores/toast-store"
 import { getCategoryEmoji, getFoodEmoji } from "@/lib/food-presets"
 import { Button } from "@/components/ui/button"
@@ -37,8 +37,9 @@ interface FamilyPreference {
   status: "like" | "dislike"
 }
 
-export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function ProductDetailPage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const [product, setProduct] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -55,12 +56,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     food_name: "",
   })
 
-  useEffect(() => {
-    loadProduct()
-    loadFamilyPreferences()
-  }, [id])
-
-  const loadProduct = async () => {
+  const loadProduct = useCallback(async () => {
+    if (!id) return
     try {
       const response = await fetch(`/api/products/${id}`)
       if (response.ok) {
@@ -82,9 +79,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [id, router])
 
-  const loadFamilyPreferences = async () => {
+  const loadFamilyPreferences = useCallback(async () => {
     try {
       const familyRes = await fetch("/api/families")
       if (!familyRes.ok) return
@@ -113,7 +110,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     } catch (error) {
       console.error("Failed to load family preferences:", error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadProduct()
+    loadFamilyPreferences()
+  }, [loadProduct, loadFamilyPreferences])
 
   const handleUpdate = async () => {
     setIsUpdating(true)
