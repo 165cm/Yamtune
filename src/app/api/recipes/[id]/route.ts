@@ -1,11 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+
+export const dynamic = "force-dynamic"
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
+  const { id: recipeId } = await params
 
   // ユーザー認証チェック
   const {
@@ -14,8 +17,6 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-
-  const recipeId = params.id
 
   // レシピ基本情報を取得
   const { data: recipe, error: recipeError } = await (supabase as any)
@@ -77,10 +78,11 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
+  const { id: recipeId } = await params
 
   // ユーザー認証チェック
   const {
@@ -89,8 +91,6 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-
-  const recipeId = params.id
   const body = await request.json()
 
   // 画像更新の場合
