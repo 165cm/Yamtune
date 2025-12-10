@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { toast } from "@/stores/toast-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   Camera,
   Loader2,
+  ShoppingBag,
+  Package,
 } from "lucide-react"
 
 interface Recipe {
@@ -49,42 +51,53 @@ interface Recipe {
   isFavorite: boolean
 }
 
-export default function RecipeDetailPage({
-  params,
-}: {
-  params: { id: string }
-}) {
+interface MatchedProduct {
+  ingredientName: string
+  product: {
+    id: string
+    name: string
+    image_url?: string
+  }
+}
+
+export default function RecipeDetailPage() {
   const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
   const [recipe, setRecipe] = useState<Recipe | null>(null)
+  const [matchedProducts, setMatchedProducts] = useState<MatchedProduct[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
 
-  useEffect(() => {
-    fetchRecipe()
-  }, [params.id])
-
-  const fetchRecipe = async () => {
+  const fetchRecipe = useCallback(async () => {
     try {
-      const response = await fetch(`/api/recipes/${params.id}`)
+      const response = await fetch(`/api/recipes/${id}`)
       if (!response.ok) throw new Error("Failed to fetch recipe")
 
       const data = await response.json()
       setRecipe(data.recipe)
       setIsFavorite(data.recipe.isFavorite)
+      if (data.matchedProducts) {
+        setMatchedProducts(data.matchedProducts)
+      }
     } catch (error) {
       console.error("Error fetching recipe:", error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [id])
+
+  useEffect(() => {
+    fetchRecipe()
+  }, [fetchRecipe])
 
   const toggleFavorite = async () => {
     setIsTogglingFavorite(true)
     try {
       const newFavoriteStatus = !isFavorite
-      const response = await fetch(`/api/recipes/${params.id}`, {
+      const response = await fetch(`/api/recipes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isFavorite: newFavoriteStatus }),
@@ -323,21 +336,48 @@ export default function RecipeDetailPage({
       {/* 材料 */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-lg">材料</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">材料</CardTitle>
+            {matchedProducts.length > 0 && (
+              <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
+                <Package className="w-3 h-3" />
+                {matchedProducts.length}品の手持ち商品
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {recipe.ingredients.map((ingredient, index) => (
-              <div
-                key={index}
-                className="flex justify-between items-center py-2 border-b last:border-b-0"
-              >
-                <span className="font-medium">{ingredient.name}</span>
-                <span className="text-muted-foreground">
-                  {ingredient.amount}
-                </span>
-              </div>
-            ))}
+            {recipe.ingredients.map((ingredient, index) => {
+              const matched = matchedProducts.find(
+                (mp) => mp.ingredientName === ingredient.name
+              )
+              return (
+                <div
+                  key={index}
+                  className={`flex justify-between items-center py-2 border-b last:border-b-0 ${
+                    matched ? "bg-green-50 -mx-4 px-4 rounded" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {matched && (
+                      <ShoppingBag className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    )}
+                    <div>
+                      <span className="font-medium">{ingredient.name}</span>
+                      {matched && (
+                        <p className="text-xs text-green-600">
+                          {matched.product.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-muted-foreground">
+                    {ingredient.amount}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       </Card>

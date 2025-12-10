@@ -209,17 +209,31 @@ ${dislikedFoods.length > 0 ? `【避けるべき食材】\n${dislikedFoods.join(
 
     console.log("Recipe saved with ID:", recipe.id)
 
-    // 材料を保存
+    // 材料を保存（選択された商品とマッチング）
     if (recipeData.ingredients && recipeData.ingredients.length > 0) {
       const ingredients = recipeData.ingredients.map(
-        (ingredient: any, index: number) => ({
-          recipe_id: recipe.id,
-          product_id: null, // TODO: 材料名から商品IDをマッチングする
-          name: ingredient.name,
-          amount: ingredient.amount,
-          notes: ingredient.notes,
-          order_index: index,
-        })
+        (ingredient: any, index: number) => {
+          const ingredientName = ingredient.name.toLowerCase()
+          // 選択された商品の中から材料名にマッチするものを探す
+          const matchedProduct = (products as any[]).find((p) => {
+            const productName = p.name?.toLowerCase() || ""
+            const foodName = p.food_name?.toLowerCase() || ""
+            return (
+              productName.includes(ingredientName) ||
+              ingredientName.includes(productName) ||
+              (foodName && foodName.includes(ingredientName)) ||
+              (foodName && ingredientName.includes(foodName))
+            )
+          })
+          return {
+            recipe_id: recipe.id,
+            product_id: matchedProduct?.id || null,
+            name: ingredient.name,
+            amount: ingredient.amount,
+            notes: ingredient.notes,
+            order_index: index,
+          }
+        }
       )
 
       const { error: ingredientsError } = await (supabase as any)

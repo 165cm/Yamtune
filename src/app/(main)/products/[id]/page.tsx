@@ -28,6 +28,9 @@ import {
   Flame,
   Beef,
   Wheat,
+  ChefHat,
+  Clock,
+  Users,
 } from "lucide-react"
 import { FullPageLoader } from "@/components/ui/skeleton"
 
@@ -35,6 +38,16 @@ interface FamilyPreference {
   memberName: string
   foodName: string
   status: "like" | "dislike"
+}
+
+interface RelatedRecipe {
+  id: string
+  title: string
+  description: string
+  servings: number
+  cooking_time: number
+  difficulty: string
+  image_url?: string
 }
 
 export default function ProductDetailPage() {
@@ -55,6 +68,7 @@ export default function ProductDetailPage() {
     category: "",
     food_name: "",
   })
+  const [relatedRecipes, setRelatedRecipes] = useState<RelatedRecipe[]>([])
 
   const loadProduct = useCallback(async () => {
     if (!id) return
@@ -112,10 +126,24 @@ export default function ProductDetailPage() {
     }
   }, [])
 
+  const loadRelatedRecipes = useCallback(async () => {
+    if (!id) return
+    try {
+      const response = await fetch(`/api/products/${id}/recipes`)
+      if (response.ok) {
+        const data = await response.json()
+        setRelatedRecipes(data.recipes || [])
+      }
+    } catch (error) {
+      console.error("Failed to load related recipes:", error)
+    }
+  }, [id])
+
   useEffect(() => {
     loadProduct()
     loadFamilyPreferences()
-  }, [loadProduct, loadFamilyPreferences])
+    loadRelatedRecipes()
+  }, [loadProduct, loadFamilyPreferences, loadRelatedRecipes])
 
   const handleUpdate = async () => {
     setIsUpdating(true)
@@ -416,6 +444,58 @@ export default function ProductDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* この商品を使ったレシピ */}
+        {relatedRecipes.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ChefHat className="w-5 h-5" />
+                この商品を使ったレシピ
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {relatedRecipes.map((recipe) => (
+                  <div
+                    key={recipe.id}
+                    className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                    onClick={() => router.push(`/recipes/${recipe.id}`)}
+                  >
+                    {recipe.image_url && (
+                      <img
+                        src={recipe.image_url}
+                        alt={recipe.title}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{recipe.title}</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {recipe.description}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        {recipe.cooking_time && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {recipe.cooking_time}分
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {recipe.servings}人分
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {recipe.difficulty}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* 編集ダイアログ */}
