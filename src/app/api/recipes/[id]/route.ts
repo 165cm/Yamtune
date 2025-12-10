@@ -33,12 +33,12 @@ export async function GET(
     )
   }
 
-  // 材料を取得
+  // 材料を取得（紐付けられた商品情報も含む）
   const { data: ingredients, error: ingredientsError } = await (
     supabase as any
   )
     .from("recipe_ingredients")
-    .select("*")
+    .select("*, products(*)")
     .eq("recipe_id", recipeId)
     .order("order_index")
 
@@ -89,6 +89,16 @@ export async function GET(
   // 調味料ストックとマッチした材料
   const matchedPantryItems: string[] = []
 
+  // ユーザーの商品IDとお気に入り状態のマップを作成
+  const userProductMap = new Map<string, boolean>()
+  if (userProducts) {
+    for (const up of userProducts) {
+      if (up.products?.id) {
+        userProductMap.set(up.products.id, up.is_favorite || false)
+      }
+    }
+  }
+
   if (ingredients) {
     for (const ingredient of ingredients) {
       const ingredientName = ingredient.name.toLowerCase()
@@ -103,10 +113,26 @@ export async function GET(
       })
       if (matchedPantry) {
         matchedPantryItems.push(ingredient.name)
+        continue // パントリーにマッチしたら商品マッチングはスキップ
       }
 
-      // 商品とマッチング（調味料ストックにマッチしなかった場合のみ）
-      if (!matchedPantry && userProducts) {
+      // 1. まず、レシピ生成時に紐付けられた商品をチェック
+      if (ingredient.product_id && ingredient.products) {
+        const isFavorite = userProductMap.get(ingredient.product_id) || false
+        matchedProducts.push({
+          ingredientName: ingredient.name,
+          product: {
+            id: ingredient.products.id,
+            name: ingredient.products.name,
+            image_url: ingredient.products.image_url,
+            isFavorite,
+          },
+        })
+        continue
+      }
+
+      // 2. 紐付けがない場合は名前でマッチング（フォールバック）
+      if (userProducts) {
         const matchedProduct = userProducts.find((up: any) => {
           const product = up.products
           if (!product) return false
