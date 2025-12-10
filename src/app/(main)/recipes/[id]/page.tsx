@@ -389,11 +389,6 @@ export default function RecipeDetailPage() {
                     )}
                     <div>
                       <span className="font-medium">{ingredient.name}</span>
-                      {isPantryItem && (
-                        <p className="text-xs text-amber-600">
-                          🏠 家にストックあり
-                        </p>
-                      )}
                       {!isPantryItem && matchedProduct && (
                         <p className="text-xs text-green-600">
                           {matchedProduct.product.name}
