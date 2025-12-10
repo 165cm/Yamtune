@@ -73,37 +73,62 @@ export async function GET(
     .select("products(*)")
     .eq("user_id", user.id)
 
+  // ユーザーの調味料ストックを取得
+  const { data: pantryData } = await (supabase as any)
+    .from("user_pantry")
+    .select("item_name")
+    .eq("user_id", user.id)
+
+  const pantryItems = pantryData?.map((p: any) => p.item_name) || []
+
   const matchedProducts: Array<{
     ingredientName: string
     product: { id: string; name: string; image_url?: string }
   }> = []
 
-  if (userProducts && ingredients) {
+  // 調味料ストックとマッチした材料
+  const matchedPantryItems: string[] = []
+
+  if (ingredients) {
     for (const ingredient of ingredients) {
       const ingredientName = ingredient.name.toLowerCase()
-      // 商品名または food_name で材料とマッチング
-      const matchedProduct = userProducts.find((up: any) => {
-        const product = up.products
-        if (!product) return false
-        const productName = product.name?.toLowerCase() || ""
-        const foodName = product.food_name?.toLowerCase() || ""
-        // 材料名が商品名に含まれる、または商品名が材料名に含まれる
+
+      // 調味料ストックとマッチングをチェック
+      const matchedPantry = pantryItems.find((pantryItem: string) => {
+        const pantryName = pantryItem.toLowerCase()
         return (
-          productName.includes(ingredientName) ||
-          ingredientName.includes(productName) ||
-          (foodName && foodName.includes(ingredientName)) ||
-          (foodName && ingredientName.includes(foodName))
+          ingredientName.includes(pantryName) ||
+          pantryName.includes(ingredientName)
         )
       })
-      if (matchedProduct?.products) {
-        matchedProducts.push({
-          ingredientName: ingredient.name,
-          product: {
-            id: matchedProduct.products.id,
-            name: matchedProduct.products.name,
-            image_url: matchedProduct.products.image_url,
-          },
+      if (matchedPantry) {
+        matchedPantryItems.push(ingredient.name)
+      }
+
+      // 商品とマッチング（調味料ストックにマッチしなかった場合のみ）
+      if (!matchedPantry && userProducts) {
+        const matchedProduct = userProducts.find((up: any) => {
+          const product = up.products
+          if (!product) return false
+          const productName = product.name?.toLowerCase() || ""
+          const foodName = product.food_name?.toLowerCase() || ""
+          return (
+            productName.includes(ingredientName) ||
+            ingredientName.includes(productName) ||
+            (foodName && foodName.includes(ingredientName)) ||
+            (foodName && ingredientName.includes(foodName))
+          )
         })
+        if (matchedProduct?.products) {
+          matchedProducts.push({
+            ingredientName: ingredient.name,
+            product: {
+              id: matchedProduct.products.id,
+              name: matchedProduct.products.name,
+              image_url: matchedProduct.products.image_url,
+            },
+          })
+        }
       }
     }
   }
@@ -116,6 +141,7 @@ export async function GET(
       isFavorite,
     },
     matchedProducts,
+    matchedPantryItems,
   })
 }
 
