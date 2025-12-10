@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react"
 import { toast } from "@/stores/toast-store"
 import { Member, MemberFood, FoodStatus } from "@/types"
+import { foodPresets, getFoodEmoji } from "@/lib/food-presets"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Trash2, Calendar, Plus, X, Heart, ThumbsDown, Minus } from "lucide-react"
+import { Trash2, Calendar, Plus, X, Heart, ThumbsDown } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -16,23 +17,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 interface MemberCardProps {
   member: Member
   onDelete: (memberId: string) => void
 }
 
-const statusConfig: Record<FoodStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  like: { label: "好き", color: "bg-green-100 text-green-800 border-green-200", icon: <Heart className="w-3 h-3" /> },
-  dislike: { label: "苦手", color: "bg-red-100 text-red-800 border-red-200", icon: <ThumbsDown className="w-3 h-3" /> },
-  neutral: { label: "普通", color: "bg-gray-100 text-gray-800 border-gray-200", icon: <Minus className="w-3 h-3" /> },
+const statusConfig: Record<FoodStatus, { label: string; color: string; emoji: string }> = {
+  like: { label: "好き", color: "bg-green-100 text-green-800 border-green-200", emoji: "💚" },
+  dislike: { label: "苦手", color: "bg-red-100 text-red-800 border-red-200", emoji: "💔" },
+  neutral: { label: "普通", color: "bg-gray-100 text-gray-800 border-gray-200", emoji: "😐" },
 }
 
 export default function MemberCard({ member, onDelete }: MemberCardProps) {
@@ -96,8 +90,12 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
     }
   }
 
-  const handleAddFood = async () => {
-    if (!newFoodName.trim()) return
+  const addFood = async (foodName: string, status: FoodStatus) => {
+    // 既に登録済みかチェック
+    if (foods.some(f => f.food_name === foodName)) {
+      toast.error("既に登録されています")
+      return
+    }
 
     setIsAddingFood(true)
     try {
@@ -105,18 +103,15 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          food_name: newFoodName.trim(),
-          status: newFoodStatus,
+          food_name: foodName,
+          status: status,
         }),
       })
 
       if (response.ok) {
         const newFood = await response.json()
         setFoods([...foods, newFood])
-        setNewFoodName("")
-        setNewFoodStatus("dislike")
-        setShowAddFoodDialog(false)
-        toast.success("登録しました")
+        toast.success(`${getFoodEmoji(foodName)} ${foodName}を追加しました`)
       } else {
         toast.error("登録に失敗しました")
       }
@@ -126,6 +121,17 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
     } finally {
       setIsAddingFood(false)
     }
+  }
+
+  const handleAddFood = async () => {
+    if (!newFoodName.trim()) return
+    await addFood(newFoodName.trim(), newFoodStatus)
+    setNewFoodName("")
+    setShowAddFoodDialog(false)
+  }
+
+  const handlePresetClick = async (foodName: string, status: FoodStatus) => {
+    await addFood(foodName, status)
   }
 
   const handleDeleteFood = async (foodId: string) => {
@@ -149,6 +155,14 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
   const dislikedFoods = foods.filter((f) => f.status === "dislike")
   const likedFoods = foods.filter((f) => f.status === "like")
 
+  // 登録済みの食べ物を除外したプリセット
+  const availableDislikePresets = foodPresets.dislike.filter(
+    p => !foods.some(f => f.food_name === p.name)
+  )
+  const availableLikePresets = foodPresets.like.filter(
+    p => !foods.some(f => f.food_name === p.name)
+  )
+
   return (
     <>
       <Card>
@@ -171,9 +185,7 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
         <CardContent className="space-y-4">
           {/* 苦手な食べ物 */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-red-700">苦手な食べ物</p>
-            </div>
+            <p className="text-sm font-medium text-red-700">💔 苦手な食べ物</p>
             <div className="flex flex-wrap gap-2">
               {isLoadingFoods ? (
                 <span className="text-xs text-muted-foreground">読み込み中...</span>
@@ -187,7 +199,7 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
                     className={`text-xs ${statusConfig.dislike.color} group cursor-pointer`}
                     onClick={() => handleDeleteFood(food.id)}
                   >
-                    {food.food_name}
+                    {getFoodEmoji(food.food_name)} {food.food_name}
                     <X className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100" />
                   </Badge>
                 ))
@@ -197,7 +209,7 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
 
           {/* 好きな食べ物 */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-green-700">好きな食べ物</p>
+            <p className="text-sm font-medium text-green-700">💚 好きな食べ物</p>
             <div className="flex flex-wrap gap-2">
               {isLoadingFoods ? (
                 <span className="text-xs text-muted-foreground">読み込み中...</span>
@@ -211,7 +223,7 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
                     className={`text-xs ${statusConfig.like.color} group cursor-pointer`}
                     onClick={() => handleDeleteFood(food.id)}
                   >
-                    {food.food_name}
+                    {getFoodEmoji(food.food_name)} {food.food_name}
                     <X className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100" />
                   </Badge>
                 ))
@@ -262,52 +274,93 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
 
       {/* 食べ物追加ダイアログ */}
       <Dialog open={showAddFoodDialog} onOpenChange={setShowAddFoodDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>好き嫌いを追加</DialogTitle>
             <DialogDescription>
               {member.name}さんの好きな食べ物・苦手な食べ物を登録します
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">食べ物の名前</label>
-              <Input
-                placeholder="例: にんじん、ピーマン"
-                value={newFoodName}
-                onChange={(e) => setNewFoodName(e.target.value)}
-              />
+          <div className="space-y-6 py-4">
+            {/* 苦手な食べ物プリセット */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ThumbsDown className="w-4 h-4 text-red-600" />
+                <span className="text-sm font-medium">苦手な食べ物</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableDislikePresets.slice(0, 10).map((preset) => (
+                  <Button
+                    key={preset.name}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 hover:bg-red-50 hover:border-red-300"
+                    onClick={() => handlePresetClick(preset.name, "dislike")}
+                    disabled={isAddingFood}
+                  >
+                    {preset.emoji} {preset.name}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">好き嫌い</label>
-              <Select
-                value={newFoodStatus}
-                onValueChange={(value) => setNewFoodStatus(value as FoodStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="like">
-                    <div className="flex items-center gap-2">
-                      <Heart className="w-4 h-4 text-green-600" />
-                      好き
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="dislike">
-                    <div className="flex items-center gap-2">
-                      <ThumbsDown className="w-4 h-4 text-red-600" />
-                      苦手
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="neutral">
-                    <div className="flex items-center gap-2">
-                      <Minus className="w-4 h-4 text-gray-600" />
-                      普通
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* 好きな食べ物プリセット */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Heart className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium">好きな食べ物</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableLikePresets.slice(0, 10).map((preset) => (
+                  <Button
+                    key={preset.name}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 hover:bg-green-50 hover:border-green-300"
+                    onClick={() => handlePresetClick(preset.name, "like")}
+                    disabled={isAddingFood}
+                  >
+                    {preset.emoji} {preset.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* カスタム入力 */}
+            <div className="space-y-3 pt-4 border-t">
+              <p className="text-sm font-medium">その他（手入力）</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="食べ物の名前"
+                  value={newFoodName}
+                  onChange={(e) => setNewFoodName(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNewFoodStatus("dislike")
+                    handleAddFood()
+                  }}
+                  disabled={isAddingFood || !newFoodName.trim()}
+                  className="text-red-600 hover:bg-red-50"
+                >
+                  💔 苦手
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNewFoodStatus("like")
+                    handleAddFood()
+                  }}
+                  disabled={isAddingFood || !newFoodName.trim()}
+                  className="text-green-600 hover:bg-green-50"
+                >
+                  💚 好き
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -315,13 +368,7 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
               variant="outline"
               onClick={() => setShowAddFoodDialog(false)}
             >
-              キャンセル
-            </Button>
-            <Button
-              onClick={handleAddFood}
-              disabled={isAddingFood || !newFoodName.trim()}
-            >
-              {isAddingFood ? "追加中..." : "追加"}
+              閉じる
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import { toast } from "@/stores/toast-store"
+import { getCategoryEmoji } from "@/lib/food-presets"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Trash2, Flame, Beef, Wheat, ChevronDown, ChevronUp, Pencil } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Trash2, Flame, Beef, Wheat, ChevronDown, ChevronUp, Pencil, Heart, ThumbsDown } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,13 +17,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+interface FamilyPreference {
+  memberName: string
+  foodName: string
+  status: "like" | "dislike"
+}
+
 interface ProductCardProps {
   product: any
   onDelete?: (id: string) => void
   onUpdate?: (product: any) => void
+  familyPreferences?: FamilyPreference[]
 }
 
-export default function ProductCard({ product, onDelete, onUpdate }: ProductCardProps) {
+export default function ProductCard({ product, onDelete, onUpdate, familyPreferences = [] }: ProductCardProps) {
   const [showAllNutrition, setShowAllNutrition] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -36,6 +45,12 @@ export default function ProductCard({ product, onDelete, onUpdate }: ProductCard
   // 基本3種類以外の栄養素を取得
   const otherNutrition = Object.entries(nutrition).filter(
     ([key]) => !["energy_kcal", "protein_g", "carbohydrate_g"].includes(key)
+  )
+
+  // 商品名に含まれる家族の好き嫌いをチェック
+  const matchedPreferences = familyPreferences.filter(pref =>
+    currentProduct.name.includes(pref.foodName) ||
+    pref.foodName.includes(currentProduct.name.replace(/[（(].*[)）]/, '').trim())
   )
 
   const formatNutritionLabel = (key: string) => {
@@ -149,7 +164,9 @@ export default function ProductCard({ product, onDelete, onUpdate }: ProductCard
             <div>
               <CardTitle className="text-lg line-clamp-2">{currentProduct.name}</CardTitle>
               {currentProduct.category && (
-                <p className="text-xs text-muted-foreground mt-1">{currentProduct.category}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {getCategoryEmoji(currentProduct.category)} {currentProduct.category}
+                </p>
               )}
             </div>
             <div className="flex gap-1 flex-shrink-0">
@@ -177,6 +194,26 @@ export default function ProductCard({ product, onDelete, onUpdate }: ProductCard
               )}
             </div>
           </div>
+
+          {/* 家族の好き嫌いマッチング表示 */}
+          {matchedPreferences.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {matchedPreferences.map((pref, idx) => (
+                <Badge
+                  key={`${pref.memberName}-${pref.foodName}-${idx}`}
+                  variant="outline"
+                  className={`text-xs ${
+                    pref.status === "like"
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  {pref.status === "like" ? <Heart className="w-3 h-3 mr-1" /> : <ThumbsDown className="w-3 h-3 mr-1" />}
+                  {pref.memberName}
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {currentProduct.image_url && (

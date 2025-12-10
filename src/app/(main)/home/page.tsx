@@ -20,6 +20,7 @@ export default function HomePage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [recentRecipes, setRecentRecipes] = useState<any[]>([])
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true)
+  const [familyPreferences, setFamilyPreferences] = useState<any[]>([])
   const productsListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function HomePage() {
       } else {
         fetchProducts()
         fetchRecentRecipes()
+        fetchFamilyPreferences()
       }
     }
 
@@ -72,6 +74,43 @@ export default function HomePage() {
       console.error("Failed to fetch recipes:", error)
     } finally {
       setIsLoadingRecipes(false)
+    }
+  }
+
+  const fetchFamilyPreferences = async () => {
+    try {
+      // 家族を取得
+      const familyRes = await fetch("/api/families")
+      if (!familyRes.ok) return
+
+      const families = await familyRes.json()
+      if (families.length === 0) return
+
+      // メンバーを取得
+      const membersRes = await fetch(`/api/members?family_id=${families[0].id}`)
+      if (!membersRes.ok) return
+
+      const members = await membersRes.json()
+
+      // 各メンバーの食べ物好き嫌いを取得
+      const allPreferences: any[] = []
+      for (const member of members) {
+        const foodsRes = await fetch(`/api/members/${member.id}/foods`)
+        if (foodsRes.ok) {
+          const foods = await foodsRes.json()
+          foods.forEach((food: any) => {
+            allPreferences.push({
+              memberName: member.name,
+              foodName: food.food_name,
+              status: food.status,
+            })
+          })
+        }
+      }
+
+      setFamilyPreferences(allPreferences)
+    } catch (error) {
+      console.error("Failed to fetch family preferences:", error)
     }
   }
 
@@ -137,6 +176,7 @@ export default function HomePage() {
                   product={product}
                   onDelete={handleDeleteProduct}
                   onUpdate={handleUpdateProduct}
+                  familyPreferences={familyPreferences}
                 />
               ))}
             </div>
