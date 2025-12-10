@@ -23,11 +23,13 @@ export async function GET() {
       .order("created_at", { ascending: true })
 
     if (error) {
+      // テーブルが存在しない場合は空配列を返す
+      if (error.code === "42P01" || error.message?.includes("does not exist")) {
+        console.log("user_pantry table does not exist yet")
+        return NextResponse.json({ items: [] })
+      }
       console.error("Error fetching pantry:", error)
-      return NextResponse.json(
-        { error: "Failed to fetch pantry items" },
-        { status: 500 }
-      )
+      return NextResponse.json({ items: [] })
     }
 
     return NextResponse.json({
@@ -35,10 +37,7 @@ export async function GET() {
     })
   } catch (error) {
     console.error("Pantry GET error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ items: [] })
   }
 }
 
@@ -65,10 +64,20 @@ export async function PUT(request: NextRequest) {
     }
 
     // 既存のアイテムを削除
-    await (supabase as any)
+    const { error: deleteError } = await (supabase as any)
       .from("user_pantry")
       .delete()
       .eq("user_id", user.id)
+
+    if (deleteError) {
+      // テーブルが存在しない場合のエラー
+      if (deleteError.code === "42P01" || deleteError.message?.includes("does not exist")) {
+        return NextResponse.json(
+          { error: "調味料ストック機能を使用するには、データベースのマイグレーションが必要です。supabase/migrations/004_create_pantry_table.sql を実行してください。" },
+          { status: 500 }
+        )
+      }
+    }
 
     // 新しいアイテムを追加
     if (items.length > 0) {
@@ -84,7 +93,7 @@ export async function PUT(request: NextRequest) {
       if (error) {
         console.error("Error inserting pantry items:", error)
         return NextResponse.json(
-          { error: "Failed to update pantry items" },
+          { error: "調味料ストック機能を使用するには、データベースのマイグレーションが必要です。" },
           { status: 500 }
         )
       }

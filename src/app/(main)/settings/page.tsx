@@ -9,7 +9,8 @@ import { pantryPresets } from "@/lib/food-presets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag, Loader2 } from "lucide-react"
+import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag, Loader2, Plus, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { FullPageLoader } from "@/components/ui/skeleton"
 import {
   Dialog,
@@ -34,6 +35,7 @@ export default function SettingsPage() {
   })
   const [pantryItems, setPantryItems] = useState<string[]>([])
   const [isSavingPantry, setIsSavingPantry] = useState(false)
+  const [newPantryItem, setNewPantryItem] = useState("")
 
   const loadPantryItems = useCallback(async () => {
     try {
@@ -72,6 +74,26 @@ export default function SettingsPage() {
     const newItems = pantryItems.includes(itemName)
       ? pantryItems.filter((item) => item !== itemName)
       : [...pantryItems, itemName]
+    setPantryItems(newItems)
+    savePantryItems(newItems)
+  }
+
+  const addCustomPantryItem = () => {
+    const trimmed = newPantryItem.trim()
+    if (!trimmed) return
+    if (pantryItems.includes(trimmed)) {
+      toast.error("既に登録されています")
+      return
+    }
+    const newItems = [...pantryItems, trimmed]
+    setPantryItems(newItems)
+    savePantryItems(newItems)
+    setNewPantryItem("")
+    toast.success(`「${trimmed}」を追加しました`)
+  }
+
+  const removePantryItem = (itemName: string) => {
+    const newItems = pantryItems.filter((item) => item !== itemName)
     setPantryItems(newItems)
     savePantryItems(newItems)
   }
@@ -226,41 +248,84 @@ export default function SettingsPage() {
               )}
             </CardTitle>
             <CardDescription>
-              いつも家にある調味料を選んでください。レシピ生成時に活用します。
+              いつも家にある調味料を登録してください。レシピ生成時に活用します。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {Object.entries(pantryPresets).map(([key, category]) => (
-              <div key={key} className="space-y-3">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <span>{category.emoji}</span>
-                  {category.label}
-                </h4>
+            {/* 登録済みの調味料 */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">登録済み（{pantryItems.length}種類）</h4>
+              {pantryItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">まだ登録がありません</p>
+              ) : (
                 <div className="flex flex-wrap gap-2">
-                  {category.items.map((item) => (
-                    <label
-                      key={item.name}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
-                        pantryItems.includes(item.name)
-                          ? "bg-green-50 border-green-300 text-green-800"
-                          : "bg-white hover:bg-gray-50"
-                      }`}
+                  {pantryItems.map((item) => (
+                    <span
+                      key={item}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-50 border border-green-200 text-green-800 rounded-full text-sm group cursor-pointer hover:bg-green-100"
+                      onClick={() => removePantryItem(item)}
                     >
-                      <Checkbox
-                        checked={pantryItems.includes(item.name)}
-                        onCheckedChange={() => togglePantryItem(item.name)}
-                      />
-                      <span className="text-sm">
-                        {item.emoji} {item.name}
-                      </span>
-                    </label>
+                      {item}
+                      <X className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                    </span>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* カスタム追加 */}
+            <div className="space-y-3 pt-4 border-t">
+              <h4 className="text-sm font-medium">調味料を追加</h4>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="調味料名を入力"
+                  value={newPantryItem}
+                  onChange={(e) => setNewPantryItem(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCustomPantryItem()}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={addCustomPantryItem}
+                  disabled={!newPantryItem.trim() || isSavingPantry}
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  追加
+                </Button>
               </div>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              ✅ 選択した調味料: {pantryItems.length}種類
-            </p>
+            </div>
+
+            {/* クイック追加（プリセット） */}
+            <div className="space-y-3 pt-4 border-t">
+              <h4 className="text-sm font-medium">クイック追加</h4>
+              {Object.entries(pantryPresets).map(([key, category]) => (
+                <div key={key} className="space-y-2">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <span>{category.emoji}</span>
+                    {category.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {category.items
+                      .filter((item) => !pantryItems.includes(item.name))
+                      .map((item) => (
+                        <Button
+                          key={item.name}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => togglePantryItem(item.name)}
+                          disabled={isSavingPantry}
+                        >
+                          {item.emoji} {item.name}
+                        </Button>
+                      ))}
+                    {category.items.filter((item) => !pantryItems.includes(item.name)).length === 0 && (
+                      <span className="text-xs text-muted-foreground">すべて登録済み ✓</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
