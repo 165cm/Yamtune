@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Camera, Upload, X, Loader2, Check } from "lucide-react"
+import { Camera, Upload, X, Loader2, Check, Search, Barcode } from "lucide-react"
 
 // 栄養素フィールドの定義
 const NUTRITION_FIELDS = {
@@ -67,6 +67,11 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
   const [showEditForm, setShowEditForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // バーコード検索用
+  const [barcodeInput, setBarcodeInput] = useState("")
+  const [isSearchingBarcode, setIsSearchingBarcode] = useState(false)
+  const [barcodeNotFound, setBarcodeNotFound] = useState(false)
+
   // 編集フォーム用
   const [productName, setProductName] = useState("")
   const [category, setCategory] = useState("")
@@ -111,6 +116,43 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
       setError(null)
     }
     reader.readAsDataURL(file)
+  }
+
+  const handleBarcodeSearch = async () => {
+    if (!barcodeInput.trim()) {
+      setError("バーコード番号を入力してください")
+      return
+    }
+
+    setIsSearchingBarcode(true)
+    setError(null)
+    setBarcodeNotFound(false)
+
+    try {
+      const response = await fetch(`/api/products/barcode?barcode=${barcodeInput.trim()}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "検索に失敗しました")
+      }
+
+      if (!data.found) {
+        setBarcodeNotFound(true)
+        setError(data.message || "商品が見つかりませんでした")
+        return
+      }
+
+      // 商品が見つかった場合、編集フォームに情報をセット
+      setProductName(data.product.name || "")
+      setCategory(data.product.category || "")
+      setImageUrl(data.product.image_url || "")
+      setNutrition(data.product.nutrition || {})
+      setShowEditForm(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "エラーが発生しました")
+    } finally {
+      setIsSearchingBarcode(false)
+    }
   }
 
   const handleScan = async () => {
@@ -210,6 +252,8 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
     setImageUrl("")
     setNutrition({})
     setError(null)
+    setBarcodeInput("")
+    setBarcodeNotFound(false)
   }
 
   // 栄養素フィールドのレンダリングヘルパー
@@ -522,88 +566,142 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
       <CardHeader>
         <CardTitle className="text-lg">商品を登録</CardTitle>
         <p className="text-sm text-muted-foreground">
-          パッケージと栄養表示の写真を撮影してください
+          バーコードで検索、または写真を撮影してください
         </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* パッケージ画像 */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">① パッケージ（任意）</p>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                ref={packageCameraRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePackageImageSelect}
-                className="hidden"
-              />
-              <input
-                ref={packageInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePackageImageSelect}
-                className="hidden"
-              />
-
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2"
-                onClick={() => packageCameraRef.current?.click()}
-              >
-                <Camera className="w-6 h-6" />
-                <span className="text-xs">撮影</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2"
-                onClick={() => packageInputRef.current?.click()}
-              >
-                <Upload className="w-6 h-6" />
-                <span className="text-xs">選択</span>
-              </Button>
-            </div>
+      <CardContent className="space-y-6">
+        {/* バーコード検索セクション */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Barcode className="w-5 h-5 text-primary" />
+            <p className="text-sm font-medium">バーコードで検索（おすすめ）</p>
           </div>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="バーコード番号を入力（例: 4901234567890）"
+              value={barcodeInput}
+              onChange={(e) => {
+                setBarcodeInput(e.target.value.replace(/\D/g, ""))
+                setBarcodeNotFound(false)
+                setError(null)
+              }}
+              className="flex-1"
+              disabled={isSearchingBarcode}
+            />
+            <Button
+              onClick={handleBarcodeSearch}
+              disabled={!barcodeInput.trim() || isSearchingBarcode}
+            >
+              {isSearchingBarcode ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+          {barcodeNotFound && (
+            <p className="text-xs text-muted-foreground">
+              見つからない場合は、下の写真撮影で登録できます
+            </p>
+          )}
+        </div>
 
-          {/* 栄養表示画像 */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">② 栄養表示 *</p>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                ref={nutritionCameraRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleNutritionImageSelect}
-                className="hidden"
-              />
-              <input
-                ref={nutritionInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleNutritionImageSelect}
-                className="hidden"
-              />
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              または
+            </span>
+          </div>
+        </div>
 
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2"
-                onClick={() => nutritionCameraRef.current?.click()}
-              >
-                <Camera className="w-6 h-6" />
-                <span className="text-xs">撮影</span>
-              </Button>
+        {/* 画像スキャンセクション */}
+        <div className="space-y-3">
+          <p className="text-sm font-medium">写真で登録</p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* パッケージ画像 */}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">① パッケージ（任意）</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  ref={packageCameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePackageImageSelect}
+                  className="hidden"
+                />
+                <input
+                  ref={packageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePackageImageSelect}
+                  className="hidden"
+                />
 
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2"
-                onClick={() => nutritionInputRef.current?.click()}
-              >
-                <Upload className="w-6 h-6" />
-                <span className="text-xs">選択</span>
-              </Button>
+                <Button
+                  variant="outline"
+                  className="h-20 flex-col gap-1"
+                  onClick={() => packageCameraRef.current?.click()}
+                >
+                  <Camera className="w-5 h-5" />
+                  <span className="text-xs">撮影</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-20 flex-col gap-1"
+                  onClick={() => packageInputRef.current?.click()}
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="text-xs">選択</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* 栄養表示画像 */}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">② 栄養表示 *</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  ref={nutritionCameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleNutritionImageSelect}
+                  className="hidden"
+                />
+                <input
+                  ref={nutritionInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleNutritionImageSelect}
+                  className="hidden"
+                />
+
+                <Button
+                  variant="outline"
+                  className="h-20 flex-col gap-1"
+                  onClick={() => nutritionCameraRef.current?.click()}
+                >
+                  <Camera className="w-5 h-5" />
+                  <span className="text-xs">撮影</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-20 flex-col gap-1"
+                  onClick={() => nutritionInputRef.current?.click()}
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="text-xs">選択</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
