@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
 import RecipeGenerator from "@/components/features/recipes/recipe-generator"
+import NutritionDashboard from "@/components/features/nutrition/nutrition-dashboard"
 import { Package, Sparkles, ShoppingBag, ChefHat, Heart, Calendar, Check, Sun } from "lucide-react"
 import { ProductCardSkeleton, RecipeCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 
@@ -23,6 +24,10 @@ export default function HomePage() {
   const [familyPreferences, setFamilyPreferences] = useState<any[]>([])
   const [todayMeals, setTodayMeals] = useState<any[]>([])
   const [isLoadingMeals, setIsLoadingMeals] = useState(true)
+  const [weeklyNutrition, setWeeklyNutrition] = useState({
+    protein: 0, iron: 0, calcium: 0, vitaminA: 0, vitaminC: 0, fiber: 0
+  })
+  const [isLoadingNutrition, setIsLoadingNutrition] = useState(true)
   const productsListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,6 +43,7 @@ export default function HomePage() {
         fetchRecentRecipes()
         fetchFamilyPreferences()
         fetchTodayMeals()
+        fetchWeeklyNutrition()
       }
     }
 
@@ -131,6 +137,33 @@ export default function HomePage() {
       console.error("Failed to fetch today meals:", error)
     } finally {
       setIsLoadingMeals(false)
+    }
+  }
+
+  const fetchWeeklyNutrition = async () => {
+    try {
+      // 今週の月曜日から日曜日までの範囲を計算
+      const today = new Date()
+      const dayOfWeek = today.getDay()
+      const monday = new Date(today)
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+      const sunday = new Date(monday)
+      sunday.setDate(monday.getDate() + 6)
+
+      const startDate = monday.toISOString().split("T")[0]
+      const endDate = sunday.toISOString().split("T")[0]
+
+      const response = await fetch(
+        `/api/nutrition?start_date=${startDate}&end_date=${endDate}`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setWeeklyNutrition(data.weeklyNutrition)
+      }
+    } catch (error) {
+      console.error("Failed to fetch weekly nutrition:", error)
+    } finally {
+      setIsLoadingNutrition(false)
     }
   }
 
@@ -263,6 +296,16 @@ export default function HomePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* 栄養バランストラッカー */}
+        {!isLoadingNutrition && (
+          <NutritionDashboard
+            weeklyNutrition={weeklyNutrition}
+            likedFoods={familyPreferences
+              .filter((p) => p.status === "like")
+              .map((p) => p.foodName)}
+          />
+        )}
 
         {/* 登録済み商品一覧 */}
         <div ref={productsListRef}>

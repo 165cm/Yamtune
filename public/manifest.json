@@ -1,8 +1,8 @@
 {
-  "name": "Yamtune - 好き嫌い克服サポートアプリ",
+  "name": "Yamtune - 好きなもので栄養バッチリ",
   "short_name": "Yamtune",
-  "description": "子どもの好き嫌いを克服する栄養サポートレシピアプリ",
-  "start_url": "/",
+  "description": "好きなものを中心に、無理なく栄養を取る方法を提案するアプリ",
+  "start_url": "/home",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#10b981",
