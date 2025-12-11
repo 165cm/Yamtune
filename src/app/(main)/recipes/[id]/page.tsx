@@ -65,6 +65,15 @@ interface MatchedProduct {
   }
 }
 
+interface MemberFavorite {
+  ingredientName: string
+  member: {
+    id: string
+    name: string
+    relation: string | null
+  }
+}
+
 export default function RecipeDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -72,6 +81,7 @@ export default function RecipeDetailPage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [matchedProducts, setMatchedProducts] = useState<MatchedProduct[]>([])
   const [matchedPantryItems, setMatchedPantryItems] = useState<string[]>([])
+  const [memberFavorites, setMemberFavorites] = useState<MemberFavorite[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
@@ -90,6 +100,9 @@ export default function RecipeDetailPage() {
       }
       if (data.matchedPantryItems) {
         setMatchedPantryItems(data.matchedPantryItems)
+      }
+      if (data.memberFavorites) {
+        setMemberFavorites(data.memberFavorites)
       }
     } catch (error) {
       console.error("Error fetching recipe:", error)
@@ -331,6 +344,7 @@ export default function RecipeDetailPage() {
               )}
               {recipe.nutrition.salt_g !== undefined && (
                 <div className="flex flex-col items-center p-3 bg-blue-50 rounded-lg">
+                  <span className="text-xl mb-1">🧂</span>
                   <div className="text-2xl font-bold text-blue-600">
                     {(recipe.nutrition.salt_g / recipe.servings).toFixed(1)}
                   </div>
@@ -347,7 +361,13 @@ export default function RecipeDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">材料</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {memberFavorites.length > 0 && (
+                <Badge variant="outline" className="gap-1 bg-pink-50 text-pink-700 border-pink-200">
+                  <Heart className="w-3 h-3 fill-pink-500" />
+                  {memberFavorites.length}品が好き
+                </Badge>
+              )}
               {matchedPantryItems.length > 0 && (
                 <Badge variant="outline" className="gap-1 bg-amber-50 text-amber-700 border-amber-200">
                   <Home className="w-3 h-3" />
@@ -370,10 +390,15 @@ export default function RecipeDetailPage() {
                 (mp) => mp.ingredientName === ingredient.name
               )
               const isPantryItem = matchedPantryItems.includes(ingredient.name)
+              const memberFavorite = memberFavorites.find(
+                (mf) => mf.ingredientName === ingredient.name
+              )
 
               // スタイルを決定
               let bgClass = ""
-              if (isPantryItem) {
+              if (memberFavorite) {
+                bgClass = "bg-pink-50 -mx-4 px-4 rounded"
+              } else if (isPantryItem) {
                 bgClass = "bg-amber-50 -mx-4 px-4 rounded"
               } else if (matchedProduct) {
                 bgClass = "bg-green-50 -mx-4 px-4 rounded"
@@ -384,30 +409,48 @@ export default function RecipeDetailPage() {
                   key={index}
                   className={`flex justify-between items-center py-2 border-b last:border-b-0 ${bgClass}`}
                 >
-                  <div className="flex items-center gap-2">
-                    {isPantryItem && (
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {memberFavorite && (
+                      <Heart className="w-4 h-4 text-pink-500 fill-pink-500 flex-shrink-0" />
+                    )}
+                    {!memberFavorite && isPantryItem && (
                       <Home className="w-4 h-4 text-amber-600 flex-shrink-0" />
                     )}
-                    {!isPantryItem && matchedProduct && (
+                    {!memberFavorite && !isPantryItem && matchedProduct && (
                       <ShoppingBag className="w-4 h-4 text-green-600 flex-shrink-0" />
                     )}
-                    <div>
-                      <span className="font-medium">{ingredient.name}</span>
-                      {!isPantryItem && matchedProduct && (
-                        <Link
-                          href={`/products/${matchedProduct.product.id}`}
-                          className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 hover:underline"
-                        >
-                          {matchedProduct.product.isFavorite && (
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          )}
-                          <span>{matchedProduct.product.name}</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{ingredient.name}</span>
+                        {/* 商品名は控えめに表示 */}
+                        {!isPantryItem && matchedProduct && (
+                          <Link
+                            href={`/products/${matchedProduct.product.id}`}
+                            className="text-xs text-muted-foreground hover:text-green-600 truncate max-w-[120px]"
+                            title={matchedProduct.product.name}
+                          >
+                            ({matchedProduct.product.name})
+                          </Link>
+                        )}
+                      </div>
+                      {/* 家族メンバーの好きな食材の場合 */}
+                      {memberFavorite && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-xs text-pink-600">
+                            {memberFavorite.member.name}の好きなもの
+                          </span>
+                        </div>
+                      )}
+                      {/* お気に入り商品の場合はバッジ表示 */}
+                      {!memberFavorite && !isPantryItem && matchedProduct?.product.isFavorite && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs text-yellow-600">お気に入り商品</span>
+                        </div>
                       )}
                     </div>
                   </div>
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-foreground flex-shrink-0 ml-2">
                     {ingredient.amount}
                   </span>
                 </div>

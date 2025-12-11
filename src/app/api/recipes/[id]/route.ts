@@ -81,9 +81,52 @@ export async function GET(
 
   const pantryItems = pantryData?.map((p: any) => p.item_name) || []
 
+  // 家族メンバーとその好きな食材を取得
+  const { data: familyData } = await (supabase as any)
+    .from("families")
+    .select(`
+      id,
+      members (
+        id,
+        name,
+        relation,
+        member_foods (
+          food_name,
+          status
+        )
+      )
+    `)
+    .eq("user_id", user.id)
+    .single()
+
+  // メンバーごとの好きな食材マップを作成
+  const memberLikesMap = new Map<string, { memberId: string; memberName: string; relation: string | null }>()
+  if (familyData?.members) {
+    for (const member of familyData.members) {
+      if (member.member_foods) {
+        for (const food of member.member_foods) {
+          if (food.status === "like") {
+            const foodNameLower = food.food_name.toLowerCase()
+            memberLikesMap.set(foodNameLower, {
+              memberId: member.id,
+              memberName: member.name,
+              relation: member.relation,
+            })
+          }
+        }
+      }
+    }
+  }
+
   const matchedProducts: Array<{
     ingredientName: string
     product: { id: string; name: string; image_url?: string; isFavorite: boolean }
+  }> = []
+
+  // 材料と家族メンバーの好みのマッチング結果
+  const memberFavorites: Array<{
+    ingredientName: string
+    member: { id: string; name: string; relation: string | null }
   }> = []
 
   // 調味料ストックとマッチした材料
@@ -102,6 +145,24 @@ export async function GET(
   if (ingredients) {
     for (const ingredient of ingredients) {
       const ingredientName = ingredient.name.toLowerCase()
+
+      // 家族メンバーの好きな食材とマッチング
+      for (const [foodName, memberInfo] of memberLikesMap.entries()) {
+        if (
+          ingredientName.includes(foodName) ||
+          foodName.includes(ingredientName)
+        ) {
+          memberFavorites.push({
+            ingredientName: ingredient.name,
+            member: {
+              id: memberInfo.memberId,
+              name: memberInfo.memberName,
+              relation: memberInfo.relation,
+            },
+          })
+          break // 1つの材料に1人のメンバーをマッチ
+        }
+      }
 
       // 調味料ストックとマッチングをチェック
       const matchedPantry = pantryItems.find((pantryItem: string) => {
@@ -169,6 +230,7 @@ export async function GET(
     },
     matchedProducts,
     matchedPantryItems,
+    memberFavorites,
   })
 }
 
