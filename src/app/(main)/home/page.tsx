@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
 import RecipeGenerator from "@/components/features/recipes/recipe-generator"
-import { Package, Sparkles, ShoppingBag, ChefHat, Heart } from "lucide-react"
+import { Package, Sparkles, ShoppingBag, ChefHat, Heart, Calendar, Check, Sun } from "lucide-react"
 import { ProductCardSkeleton, RecipeCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 
 export default function HomePage() {
@@ -21,6 +21,8 @@ export default function HomePage() {
   const [recentRecipes, setRecentRecipes] = useState<any[]>([])
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true)
   const [familyPreferences, setFamilyPreferences] = useState<any[]>([])
+  const [todayMeals, setTodayMeals] = useState<any[]>([])
+  const [isLoadingMeals, setIsLoadingMeals] = useState(true)
   const productsListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function HomePage() {
         fetchProducts()
         fetchRecentRecipes()
         fetchFamilyPreferences()
+        fetchTodayMeals()
       }
     }
 
@@ -114,6 +117,48 @@ export default function HomePage() {
     }
   }
 
+  const fetchTodayMeals = async () => {
+    try {
+      const today = new Date().toISOString().split("T")[0]
+      const response = await fetch(
+        `/api/meal-plans?start_date=${today}&end_date=${today}`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setTodayMeals(data.mealPlans || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch today meals:", error)
+    } finally {
+      setIsLoadingMeals(false)
+    }
+  }
+
+  // 挨拶メッセージを時間帯で変更
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "おはようございます"
+    if (hour < 18) return "こんにちは"
+    return "こんばんは"
+  }
+
+  // 食事タイプのラベル
+  const getMealLabel = (mealType: string) => {
+    const labels: Record<string, { label: string; emoji: string }> = {
+      breakfast: { label: "朝食", emoji: "🍳" },
+      lunch: { label: "昼食", emoji: "🍱" },
+      dinner: { label: "夕食", emoji: "🍽️" },
+      snack: { label: "おやつ", emoji: "🍪" },
+    }
+    return labels[mealType] || { label: mealType, emoji: "🍴" }
+  }
+
+  // 今日の献立を食事タイプ順にソート
+  const sortedTodayMeals = [...todayMeals].sort((a, b) => {
+    const order = ["breakfast", "lunch", "dinner", "snack"]
+    return order.indexOf(a.mealType) - order.indexOf(b.mealType)
+  })
+
   const handleScanComplete = (product: any) => {
     setProducts([product, ...products])
     // 商品一覧にスクロール
@@ -150,6 +195,74 @@ export default function HomePage() {
             ログアウト
           </Button>
         </div>
+
+        {/* 今日の挨拶と献立 */}
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Sun className="w-5 h-5 text-amber-500" />
+              <CardTitle className="text-lg">{getGreeting()}</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium">今日の献立</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/calendar")}
+                className="text-amber-700 hover:text-amber-800"
+              >
+                <Calendar className="w-4 h-4 mr-1" />
+                カレンダー
+              </Button>
+            </div>
+
+            {isLoadingMeals ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 bg-amber-100 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : sortedTodayMeals.length > 0 ? (
+              <div className="space-y-2">
+                {sortedTodayMeals.map((meal) => {
+                  const mealInfo = getMealLabel(meal.mealType)
+                  return (
+                    <div
+                      key={meal.id}
+                      className={`flex items-center gap-3 p-2 rounded-lg ${
+                        meal.isCompleted ? "bg-green-100" : "bg-white"
+                      }`}
+                    >
+                      <span className="text-lg">{mealInfo.emoji}</span>
+                      <span className="text-sm font-medium w-12">{mealInfo.label}</span>
+                      <span className="flex-1 text-sm truncate">
+                        {meal.recipe?.title || "未設定"}
+                      </span>
+                      {meal.isCompleted && (
+                        <Check className="w-4 h-4 text-green-600" />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground mb-3">
+                  今日の献立がまだ設定されていません
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => router.push("/calendar")}
+                  className="bg-amber-500 hover:bg-amber-600"
+                >
+                  献立を設定する
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 登録済み商品一覧 */}
         <div ref={productsListRef}>
@@ -277,12 +390,21 @@ export default function HomePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-20"
+                onClick={() => router.push("/calendar")}
+              >
+                <Calendar className="w-5 h-5 mr-2" />
+                献立カレンダー
+              </Button>
               <Button
                 variant="outline"
                 className="h-20"
                 onClick={() => router.push("/recipes")}
               >
+                <ChefHat className="w-5 h-5 mr-2" />
                 レシピを見る
               </Button>
               <Button
