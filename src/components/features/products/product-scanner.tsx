@@ -214,9 +214,10 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          image: packageImage || nutritionImage,
+          image: packageImage || nutritionImage || null,
           name: productName,
           nutrition: nutrition,
+          imageUrl: imageUrl || "", // Open Food Factsからの画像URL（バーコード検索時）
         }),
       })
 
@@ -296,6 +297,7 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* 画像表示エリア */}
           <div className="grid md:grid-cols-2 gap-4">
             {packageImage && (
               <div>
@@ -311,6 +313,21 @@ export default function ProductScanner({ onScanComplete }: ProductScannerProps) 
                 <div className="aspect-square w-full rounded-lg overflow-hidden">
                   <img src={nutritionImage} alt="栄養表示" className="w-full h-full object-cover" />
                 </div>
+              </div>
+            )}
+            {/* バーコード検索時: Open Food Factsからの画像または画像なし */}
+            {!packageImage && !nutritionImage && (
+              <div>
+                <p className="text-sm font-medium mb-2">商品画像</p>
+                {imageUrl ? (
+                  <div className="aspect-square w-full rounded-lg overflow-hidden bg-muted">
+                    <img src={imageUrl} alt="商品" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="aspect-square w-full rounded-lg bg-muted flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">画像なし</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

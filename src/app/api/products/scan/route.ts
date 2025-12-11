@@ -17,7 +17,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { image, name: manualName, nutrition: manualNutrition, confirmNeeded } = await request.json()
+    const { image, name: manualName, nutrition: manualNutrition, confirmNeeded, imageUrl: externalImageUrl } = await request.json()
+
+    // バーコード検索からの保存（画像なし、外部URL使用）
+    if (!image && manualName && externalImageUrl !== undefined) {
+      console.log("Saving product from barcode search (no image upload)")
+
+      const productName = manualName
+      const nutritionInfo = manualNutrition && Object.keys(manualNutrition).length > 0
+        ? manualNutrition
+        : {}
+
+      // productsテーブルに保存
+      const { data: product, error: productError } = await (supabase as any)
+        .from("products")
+        .insert({
+          name: productName,
+          category: "その他",
+          image_url: externalImageUrl || null,
+          nutrition: nutritionInfo,
+          nutrition_per_100g: nutritionInfo,
+        } as any)
+        .select()
+        .single()
+
+      if (productError) {
+        console.error("Product insert error:", JSON.stringify(productError))
+        return NextResponse.json(
+          { error: `Failed to save product: ${productError.message}` },
+          { status: 500 }
+        )
+      }
+
+      // user_productsテーブルに保存
+      const { error: userProductError } = await (supabase as any)
+        .from("user_products")
+        .insert({
+          user_id: user.id,
+          product_id: product.id,
+        } as any)
+
+      if (userProductError) {
+        console.error("User product insert error:", JSON.stringify(userProductError))
+        return NextResponse.json(
+          { error: `商品の紐付けに失敗しました: ${userProductError.message}` },
+          { status: 500 }
+        )
+      }
+
+      console.log("Product saved from barcode search:", product.id)
+      return NextResponse.json({ product })
+    }
 
     if (!image) {
       console.error("No image provided")
