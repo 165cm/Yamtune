@@ -31,6 +31,8 @@ import {
   ChefHat,
   Clock,
   Users,
+  Camera,
+  Loader2,
 } from "lucide-react"
 import { FullPageLoader } from "@/components/ui/skeleton"
 
@@ -69,6 +71,7 @@ export default function ProductDetailPage() {
     food_name: "",
   })
   const [relatedRecipes, setRelatedRecipes] = useState<RelatedRecipe[]>([])
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   const loadProduct = useCallback(async () => {
     if (!id) return
@@ -214,6 +217,48 @@ export default function ProductDetailPage() {
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("画像サイズは5MB以下にしてください")
+      return
+    }
+
+    setIsUploadingImage(true)
+    try {
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string
+
+        const response = await fetch(`/api/products/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64 }),
+        })
+
+        if (response.ok) {
+          const updatedProduct = await response.json()
+          setProduct({ ...product, image_url: updatedProduct.image_url })
+          toast.success("画像を更新しました")
+        } else {
+          toast.error("画像のアップロードに失敗しました")
+        }
+        setIsUploadingImage(false)
+      }
+      reader.onerror = () => {
+        toast.error("画像の読み込みに失敗しました")
+        setIsUploadingImage(false)
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error("Failed to upload image:", error)
+      toast.error("画像のアップロードに失敗しました")
+      setIsUploadingImage(false)
+    }
+  }
+
   if (isLoading) {
     return <FullPageLoader />
   }
@@ -325,16 +370,42 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* 商品画像 */}
-        {product.image_url && (
-          <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg">
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="w-full h-full object-contain bg-white"
-            />
+        {/* 商品画像（クリックで変更可能） */}
+        <label className="cursor-pointer block">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            disabled={isUploadingImage}
+          />
+          <div className="relative aspect-square w-full rounded-xl overflow-hidden shadow-lg bg-white">
+            {product.image_url ? (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                <Camera className="w-12 h-12 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">タップして画像を追加</p>
+              </div>
+            )}
+            {/* オーバーレイ */}
+            <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center group">
+              {isUploadingImage ? (
+                <div className="bg-white/90 rounded-full p-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="bg-white/90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="w-6 h-6 text-primary" />
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </label>
 
         {/* 商品情報 */}
         <Card>
