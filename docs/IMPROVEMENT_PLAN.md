@@ -7,6 +7,30 @@
 
 ---
 
+## 🎨 Yamtuneのコンセプト
+
+### ブランド哲学
+**Yamtune = Yummy + Tune（好きなものを調整する）**
+
+> 「嫌いなものを無理に食べさせる」のではなく、
+> 「好きなものを中心に、無理なく栄養を取る方法を提案する」
+
+### キーメッセージ
+- ❌ 「苦手を克服しよう」
+- ✅ 「好きなもので栄養バッチリ！」
+
+- ❌ 「嫌いなものを食べられるようになった」
+- ✅ 「好きなもので健康に成長できている」
+
+### ターゲットの気持ち
+- 「子どもが野菜を食べなくて栄養が心配...」
+- 「でも無理強いはしたくない」
+- 「好きなもので栄養が取れたらいいのに」
+
+→ **Yamtuneが解決**: 好きな食材の組み合わせで、足りない栄養を補うレシピを提案
+
+---
+
 ## 📊 現状分析
 
 ### 現在できること（60点の内訳）
@@ -23,16 +47,16 @@
 1. **毎日使う理由がない** → 継続率が上がらない
 2. **課金機能がない** → 収益化できない
 3. **通知機能がない** → リテンションできない
-4. **進捗の可視化がない** → 達成感がない
+4. **栄養状況の可視化がない** → 価値が伝わらない
 
 ---
 
 ## 🎯 改善の全体像
 
 ```
-Week 1: 継続率向上の基盤（献立・通知）
+Week 1: 継続率向上の基盤（献立・栄養トラッカー）
 Week 2: 課金機能の実装（Stripe）
-Week 3: UX改善とコスト最適化
+Week 3: UX改善とコスト最適化（Open Food Facts API統合）
 Week 4: PWA完成とリリース準備
 ```
 
@@ -84,53 +108,73 @@ CREATE TABLE meal_plans (
 │ 🍱 昼食: 野菜たっぷりカレー ✓    │
 │ 🍽️ 夕食: ハンバーグ             │
 ├─────────────────────────────────┤
-│ 📊 今週の達成状況: ████░░ 4/7日  │
+│ 📊 今週の栄養バランス           │
+│ たんぱく質: ████████░░ 80%      │
+│ ビタミン:   ██████░░░░ 60%      │
+│ 鉄分:      ████░░░░░░ 40% ⚠️   │
 ├─────────────────────────────────┤
-│ 🎯 〇〇ちゃんの克服チャレンジ    │
-│ にんじん: 3回チャレンジ中 🥕      │
+│ 💡 今日のおすすめ               │
+│ 「鉄分を補うなら、〇〇ちゃんの   │
+│  好きなハンバーグがおすすめ！」  │
 ├─────────────────────────────────┤
 │ [+ 商品スキャン] [📋 レシピ生成] │
 └─────────────────────────────────┘
 ```
 
-### 1.3 好き嫌い克服トラッカー
-**目的**: 子どもの成長を可視化し、親のモチベーション維持
+### 1.3 栄養バランストラッカー（旧: 克服トラッカー）
+**目的**: 「好きなもので栄養が取れている」ことを可視化し、親に安心感を与える
+
+**コンセプト変更**:
+- ❌ 「苦手な食材を10回食べたら克服」
+- ✅ 「今週の栄養バランスを可視化、好きなもので足りない栄養を補う提案」
 
 **実装内容**:
 ```
-/src/components/features/tracker/
-  ├── food-challenge-card.tsx      # 克服チャレンジカード
-  ├── progress-ring.tsx            # 進捗リング
-  └── achievement-badge.tsx        # 達成バッジ
+/src/components/features/nutrition/
+  ├── nutrition-dashboard.tsx      # 栄養ダッシュボード
+  ├── nutrient-progress-bar.tsx    # 栄養素プログレスバー
+  ├── weekly-nutrition-chart.tsx   # 週間栄養チャート
+  └── nutrition-suggestion.tsx     # 栄養補充の提案
 ```
 
 **DBスキーマ追加**:
 ```sql
-CREATE TABLE food_challenges (
+-- 日別の栄養摂取記録
+CREATE TABLE daily_nutrition (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  member_id UUID REFERENCES members(id),
-  food_name TEXT NOT NULL,
-  target_count INTEGER DEFAULT 10,      -- 10回食べたら克服
-  current_count INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'active',         -- active/completed/paused
-  started_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP
+  user_id UUID REFERENCES auth.users(id),
+  member_id UUID REFERENCES members(id),  -- 家族メンバー別
+  date DATE NOT NULL,
+  nutrients JSONB NOT NULL,  -- { protein: 50, iron: 8, ... }
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, member_id, date)
 );
 
-CREATE TABLE food_challenge_logs (
+-- 栄養目標設定（年齢・性別別に自動設定）
+CREATE TABLE nutrition_goals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  challenge_id UUID REFERENCES food_challenges(id),
-  cooking_log_id UUID REFERENCES cooking_logs(id),
-  reaction TEXT CHECK (reaction IN ('ate_all', 'ate_some', 'refused')),
-  logged_at TIMESTAMP DEFAULT NOW()
+  member_id UUID REFERENCES members(id) UNIQUE,
+  goals JSONB NOT NULL,  -- { protein: 60, iron: 10, ... }
+  created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-**ゲーミフィケーション要素**:
-- 🥉 3回チャレンジ: 「挑戦者」バッジ
-- 🥈 5回チャレンジ: 「頑張り屋」バッジ
-- 🥇 10回完食: 「克服マスター」バッジ
-- 連続記録でボーナスポイント
+**表示する栄養素（子どもに重要なもの）**:
+| 栄養素 | 重要な理由 | 好きな食材で取れる例 |
+|--------|-----------|-------------------|
+| たんぱく質 | 成長に必須 | ハンバーグ、卵料理、チーズ |
+| 鉄分 | 貧血予防 | レバー、ほうれん草（カレーに混ぜる） |
+| カルシウム | 骨の成長 | 牛乳、チーズ、しらす |
+| ビタミンA | 目・肌の健康 | にんじん（すりおろしてハンバーグに） |
+| ビタミンC | 免疫力 | じゃがいも、果物 |
+| 食物繊維 | 腸の健康 | さつまいも、りんご |
+
+**AIによる提案例**:
+```
+「〇〇ちゃんは今週、鉄分が少し足りていません。
+ 好きなハンバーグにほうれん草を混ぜると、
+ おいしく鉄分を補えますよ！」
+```
 
 ### 1.4 プッシュ通知（PWA）
 **目的**: アプリを開かなくても思い出してもらう
@@ -164,12 +208,13 @@ module.exports = withPWA(nextConfig)
 
 | 機能 | 無料プラン | Proプラン ($5/月) |
 |------|-----------|------------------|
-| 商品スキャン | 3回/月 | 無制限 |
+| 商品スキャン | 5回/月 | 無制限 |
 | AIレシピ生成 | 3回/月 | 無制限 |
 | 献立カレンダー | 1週間分 | 無制限 |
-| 克服トラッカー | 1人 | 家族全員 |
+| 栄養トラッカー | 基本（3栄養素） | 詳細（全栄養素） |
+| 家族メンバー | 1人 | 無制限 |
 | プッシュ通知 | ❌ | ✅ |
-| 栄養レポート | 基本 | 詳細分析 |
+| 栄養アドバイス | 基本 | AIパーソナライズ |
 | 広告 | あり | なし |
 
 ### 2.2 Stripe統合
@@ -215,12 +260,12 @@ export async function checkUsageLimit(userId: string, action: 'scan' | 'generate
   if (subscription?.plan === 'pro') return { allowed: true }
 
   const monthlyUsage = await getMonthlyUsage(userId, action)
-  const limit = action === 'scan' ? 3 : 3
+  const limits = { scan: 5, generate: 3 }
 
   return {
-    allowed: monthlyUsage < limit,
-    remaining: Math.max(0, limit - monthlyUsage),
-    limit
+    allowed: monthlyUsage < limits[action],
+    remaining: Math.max(0, limits[action] - monthlyUsage),
+    limit: limits[action]
   }
 }
 ```
@@ -241,33 +286,179 @@ export async function checkUsageLimit(userId: string, action: 'scan' | 'generate
 
 ## 🎨 Week 3: UX改善 & コスト最適化（+10点）
 
-### 3.1 オンボーディング改善
+### 3.1 Open Food Facts API統合 ⭐ NEW
+
+**目的**: バーコードスキャンでAPIコストを大幅削減
+
+**Open Food Facts とは**:
+- 世界最大のオープン食品データベース（無料）
+- 300万以上の商品データ
+- 栄養成分情報を含む
+- 日本の商品も対応
+
+**API仕様**:
+```
+エンドポイント: https://world.openfoodfacts.org/api/v2/product/{barcode}.json
+レート制限: 100 req/min（十分）
+認証: User-Agentヘッダーのみ必要
+コスト: 無料
+```
+
+**レスポンス例**:
+```json
+{
+  "product": {
+    "product_name": "明治おいしい牛乳",
+    "nutriments": {
+      "energy-kcal_100g": 67,
+      "proteins_100g": 3.3,
+      "fat_100g": 3.8,
+      "carbohydrates_100g": 4.8,
+      "calcium_100g": 110
+    }
+  }
+}
+```
+
+**実装戦略（2段階スキャン）**:
+
+```typescript
+// /src/app/api/products/scan/route.ts（改修）
+
+export async function POST(request: Request) {
+  const { image, barcode } = await request.json()
+
+  // Step 1: バーコードがあればOpen Food Factsを先に試す（無料）
+  if (barcode) {
+    const offResult = await searchOpenFoodFacts(barcode)
+    if (offResult) {
+      return saveProduct(offResult)  // コスト: $0
+    }
+  }
+
+  // Step 2: 見つからない場合のみOpenAI Vision（有料）
+  const aiResult = await analyzeWithOpenAI(image)
+  return saveProduct(aiResult)  // コスト: ~$0.01
+}
+
+async function searchOpenFoodFacts(barcode: string) {
+  const response = await fetch(
+    `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
+    {
+      headers: {
+        'User-Agent': 'Yamtune/1.0 (contact@yamtune.app)'
+      }
+    }
+  )
+
+  const data = await response.json()
+  if (data.status !== 1) return null  // 商品が見つからない
+
+  return {
+    name: data.product.product_name,
+    barcode: barcode,
+    nutrition: {
+      energy: data.product.nutriments['energy-kcal_100g'],
+      protein: data.product.nutriments['proteins_100g'],
+      fat: data.product.nutriments['fat_100g'],
+      carbs: data.product.nutriments['carbohydrates_100g'],
+      // ... 他の栄養素
+    },
+    image_url: data.product.image_url,
+    source: 'openfoodfacts'  // データソースを記録
+  }
+}
+```
+
+**バーコードスキャン機能の追加**:
+
+```typescript
+// /src/components/features/products/barcode-scanner.tsx（新規）
+
+import { BarcodeDetector } from 'barcode-detector'  // Polyfill for older browsers
+
+export function BarcodeScanner({ onScan }: { onScan: (barcode: string) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a'] })
+
+    // カメラストリームを取得してバーコード検出
+    const detect = async () => {
+      if (videoRef.current) {
+        const barcodes = await detector.detect(videoRef.current)
+        if (barcodes.length > 0) {
+          onScan(barcodes[0].rawValue)
+        }
+      }
+      requestAnimationFrame(detect)
+    }
+
+    detect()
+  }, [])
+
+  return (
+    <div className="relative">
+      <video ref={videoRef} className="w-full rounded-lg" />
+      <div className="absolute inset-0 border-2 border-green-500 pointer-events-none" />
+      <p className="text-center mt-2">バーコードをカメラに映してください</p>
+    </div>
+  )
+}
+```
+
+**UIフロー**:
+```
+┌─────────────────────────────────┐
+│        商品を追加               │
+├─────────────────────────────────┤
+│  📷 バーコードをスキャン        │  ← 優先（無料）
+│  ─────────────────────────      │
+│  📸 パッケージを撮影           │  ← フォールバック（有料）
+│  ─────────────────────────      │
+│  ✏️ 手動で入力                 │
+└─────────────────────────────────┘
+```
+
+**コスト削減効果**:
+```
+現状: 全てOpenAI Vision
+  1,000スキャン × $0.01 = $10/月
+
+改善後: Open Food Facts優先
+  - バーコードヒット率 70%: 700スキャン × $0 = $0
+  - フォールバック 30%: 300スキャン × $0.01 = $3/月
+
+削減額: $7/月（70%削減）
+```
+
+### 3.2 オンボーディング改善
 
 **現状の問題**:
 - スキャンデモ → すぐ忘れる
 - 価値が伝わりにくい
 
-**改善案**:
+**改善案（コンセプトに沿った内容）**:
 ```
-Step 1: 「お子さんの苦手な食べ物は？」（感情的フック）
-Step 2: 「実際にスキャンしてみましょう」（体験）
-Step 3: 「AIがレシピを提案します」（価値の実感）
-Step 4: 「献立を立てましょう」（習慣化の第一歩）
-Step 5: 「通知をオンにしましょう」（リテンション）
+Step 1: 「お子さんの好きな食べ物は？」
+        → 好きなものを登録（ポジティブスタート）
+
+Step 2: 「気になる栄養素はありますか？」
+        → 鉄分、カルシウムなど選択
+
+Step 3: 「バーコードで商品をスキャン！」
+        → 実際に体験
+
+Step 4: 「好きなもので栄養バッチリ！」
+        → AIがレシピを提案
+
+Step 5: 「毎日の献立を楽にしよう」
+        → 通知ON、カレンダー設定
 ```
 
-### 3.2 APIコスト最適化
+### 3.3 その他のコスト最適化
 
-**目標**: 1,000ユーザーで $500/月以下
-
-**現状の問題**:
-- 毎回フルプロンプト送信（37栄養素の説明）
-- キャッシュなし
-- 同じレシピを何度も生成
-
-**最適化施策**:
-
-#### A) プロンプト圧縮（-30%トークン）
+**A) プロンプト圧縮（-30%トークン）**:
 ```typescript
 // Before: 37項目全て説明
 "エネルギー（kcal）、たんぱく質（g）、脂質（g）..."
@@ -276,33 +467,21 @@ Step 5: 「通知をオンにしましょう」（リテンション）
 const ESSENTIAL_NUTRIENTS = ['energy', 'protein', 'fat', 'carbs', 'salt']
 ```
 
-#### B) レシピキャッシュ（-50% API呼び出し）
+**B) レシピキャッシュ（-50% API呼び出し）**:
 ```sql
 CREATE TABLE recipe_cache (
   id UUID PRIMARY KEY,
-  product_ids UUID[] NOT NULL,      -- 使用商品（ソート済み）
-  member_ids UUID[] NOT NULL,       -- 対象メンバー
+  product_ids UUID[] NOT NULL,
+  member_ids UUID[] NOT NULL,
   recipe_id UUID REFERENCES recipes(id),
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(product_ids, member_ids)
 );
 ```
 
-#### C) 人気レシピのプリセット化
+**C) 画像最適化（-40%トークン）**:
 ```typescript
-// 人気レシピTOP100はDBに保存し、AI生成をスキップ
-const popularRecipes = await getPopularRecipes(ingredients)
-if (popularRecipes.length > 0) {
-  return popularRecipes[0]  // API呼び出しなし
-}
-// 見つからない場合のみAI生成
-```
-
-#### D) 画像最適化（-40%トークン）
-```typescript
-// クライアント側で圧縮
 const compressImage = async (file: File) => {
-  // 最大800x800、品質0.7に圧縮
   return await imageCompression(file, {
     maxWidthOrHeight: 800,
     maxSizeMB: 0.5,
@@ -310,24 +489,28 @@ const compressImage = async (file: File) => {
 }
 ```
 
-### 3.3 コスト試算
+### 3.4 コスト試算（更新版）
 
-**最適化後の予測**:
 ```
 1,000ユーザー × 月間アクション
-├── スキャン: 5回/人 × 1,000 = 5,000回
-│   └── 最適化後: $0.005/回 × 5,000 = $25
-├── レシピ生成: 10回/人 × 1,000 = 10,000回
-│   └── キャッシュヒット50%: 5,000回 × $0.003/回 = $15
-└── 合計API: $40/月
+
+スキャン: 5回/人 × 1,000 = 5,000回
+├── Open Food Facts（70%）: 3,500回 × $0 = $0
+└── OpenAI Vision（30%）:  1,500回 × $0.005 = $7.50
+
+レシピ生成: 10回/人 × 1,000 = 10,000回
+├── キャッシュヒット（50%）: 5,000回 × $0 = $0
+└── AI生成（50%）: 5,000回 × $0.003 = $15
+
+合計API: $22.50/月
 
 インフラ:
 ├── Supabase Pro: $25/月
 ├── Vercel Pro: $20/月
 └── その他: $15/月
 
-総運用コスト: $100/月（目標$500以下 ✓）
-利益率: 98%
+総運用コスト: $82.50/月（目標$500以下 ✅）
+利益率: 98.4%
 ```
 
 ---
@@ -355,8 +538,11 @@ const compressImage = async (file: File) => {
 
 **機能テスト**:
 - [ ] 新規登録フロー
-- [ ] 商品スキャン → レシピ生成 → 調理記録
+- [ ] バーコードスキャン → Open Food Facts連携
+- [ ] 画像スキャン → OpenAI Vision連携
+- [ ] レシピ生成 → 調理記録
 - [ ] 献立カレンダー操作
+- [ ] 栄養バランストラッカー
 - [ ] 課金フロー（Stripe テストモード）
 - [ ] プッシュ通知受信
 
@@ -387,16 +573,14 @@ const compressImage = async (file: File) => {
 ### 追跡イベント
 ```typescript
 // /src/lib/analytics.ts
-export const trackEvent = (event: string, properties?: object) => {
-  // Mixpanel, Amplitude, または自前実装
-}
-
-// 追跡するイベント
-trackEvent('scan_completed')
+trackEvent('scan_barcode')         // バーコードスキャン
+trackEvent('scan_image')           // 画像スキャン
+trackEvent('scan_openfoodfacts')   // OFFからデータ取得
+trackEvent('scan_openai')          // OpenAIでデータ取得
 trackEvent('recipe_generated')
 trackEvent('meal_planned')
 trackEvent('cooking_logged')
-trackEvent('challenge_started')
+trackEvent('nutrition_viewed')     // 栄養ダッシュボード閲覧
 trackEvent('upgrade_clicked')
 trackEvent('subscription_started')
 ```
@@ -412,9 +596,9 @@ trackEvent('subscription_started')
 4. ✅ PWA通知
 
 ### Should Have（あれば継続率向上）
-5. 克服トラッカー
+5. 栄養バランストラッカー
 6. 今日のダッシュボード改善
-7. APIコスト最適化
+7. Open Food Facts API統合
 
 ### Nice to Have（後回し可）
 8. 詳細栄養レポート
@@ -433,17 +617,21 @@ trackEvent('subscription_started')
 /src/app/api/stripe/webhook/route.ts
 /src/app/api/stripe/portal/route.ts
 /src/app/api/meal-plans/route.ts
-/src/app/api/challenges/route.ts
+/src/app/api/nutrition/route.ts
+/src/app/api/openfoodfacts/route.ts           # NEW
 /src/components/features/calendar/weekly-calendar.tsx
 /src/components/features/calendar/meal-slot.tsx
-/src/components/features/tracker/food-challenge-card.tsx
-/src/components/features/tracker/progress-ring.tsx
+/src/components/features/nutrition/nutrition-dashboard.tsx    # NEW
+/src/components/features/nutrition/nutrient-progress-bar.tsx  # NEW
+/src/components/features/nutrition/weekly-nutrition-chart.tsx # NEW
+/src/components/features/products/barcode-scanner.tsx         # NEW
 /src/lib/stripe.ts
 /src/lib/subscription.ts
 /src/lib/analytics.ts
+/src/lib/openfoodfacts.ts                     # NEW
 /supabase/migrations/010_meal_plans.sql
 /supabase/migrations/011_subscriptions.sql
-/supabase/migrations/012_food_challenges.sql
+/supabase/migrations/012_daily_nutrition.sql  # NEW
 ```
 
 ---
@@ -456,7 +644,7 @@ trackEvent('subscription_started')
 +20点: 継続率向上機能
   - 献立カレンダー
   - 今日のダッシュボード
-  - 克服トラッカー
+  - 栄養バランストラッカー（好きなもので栄養充足）
   - プッシュ通知
 
 +15点: 課金機能
@@ -465,8 +653,8 @@ trackEvent('subscription_started')
   - 使用量管理
 
 +10点: UX/コスト最適化
+  - Open Food Facts API統合（コスト70%削減）
   - オンボーディング改善
-  - APIコスト削減
   - パフォーマンス改善
 
 +5点: リリース準備
@@ -481,6 +669,7 @@ trackEvent('subscription_started')
 
 **1ヶ月後**:
 - [ ] 献立カレンダーが動作する
+- [ ] バーコードスキャンでOpen Food Facts連携
 - [ ] Stripeで課金できる
 - [ ] PWAとしてインストールできる
 - [ ] 通知が届く
@@ -494,3 +683,11 @@ trackEvent('subscription_started')
 - [ ] 1,000人の有料ユーザー達成
 - [ ] 月間収益 $5,000
 - [ ] App Store / Play Store 公開
+
+---
+
+## 📚 参考リンク
+
+- [Open Food Facts API Tutorial](https://openfoodfacts.github.io/openfoodfacts-server/api/tutorial-off-api/)
+- [Open Food Facts API Introduction](https://openfoodfacts.github.io/openfoodfacts-server/api/)
+- [Barcode Detector API (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/BarcodeDetector)
