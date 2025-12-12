@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuthStore } from "@/stores/auth-store"
@@ -12,7 +12,8 @@ import RecipeGenerator from "@/components/features/recipes/recipe-generator"
 import { Package, ArrowLeft, Plus, X, ChefHat } from "lucide-react"
 import { ProductCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 
-export default function ProductsPage() {
+// Suspenseでラップするためのメインコンポーネント
+function ProductsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, setUser, isLoading, setIsLoading } = useAuthStore()
@@ -214,5 +215,14 @@ export default function ProductsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// useSearchParamsをSuspenseでラップ
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<FullPageLoader />}>
+      <ProductsPageContent />
+    </Suspense>
   )
 }
