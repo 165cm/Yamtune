@@ -5,16 +5,10 @@ import { Progress } from "@/components/ui/progress"
 import { Activity, Lightbulb, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { getDefaultGoals } from "@/lib/nutrition-presets"
 
-// 子どもの1日あたりの推奨栄養素（6〜7歳を基準）
-export const DEFAULT_DAILY_GOALS = {
-  protein: 35,        // g - たんぱく質
-  iron: 6.5,          // mg - 鉄分
-  calcium: 600,       // mg - カルシウム
-  vitaminA: 400,      // μg - ビタミンA
-  vitaminC: 55,       // mg - ビタミンC
-  fiber: 11,          // g - 食物繊維
-}
+// 後方互換性のためにエクスポート（プリセットから取得）
+export const DEFAULT_DAILY_GOALS = getDefaultGoals()
 
 interface NutritionData {
   protein: number

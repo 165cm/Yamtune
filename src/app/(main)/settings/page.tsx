@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag, Loader2, Plus, X, Activity, RotateCcw } from "lucide-react"
 import { DEFAULT_DAILY_GOALS } from "@/components/features/nutrition/nutrition-dashboard"
 import { Input } from "@/components/ui/input"
+import { presetsByCategory, nutritionPresets, NutritionPreset } from "@/lib/nutrition-presets"
 import { FullPageLoader } from "@/components/ui/skeleton"
 import {
   Dialog,
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const [newPantryItem, setNewPantryItem] = useState("")
   const [nutritionGoals, setNutritionGoals] = useState(DEFAULT_DAILY_GOALS)
   const [isSavingGoals, setIsSavingGoals] = useState(false)
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
 
   const loadPantryItems = useCallback(async () => {
     try {
@@ -107,6 +109,15 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json()
         setNutritionGoals(data.goals)
+        // 現在の目標に一致するプリセットを見つける
+        const matchingPreset = nutritionPresets.find((p) =>
+          p.goals.protein === data.goals.protein &&
+          p.goals.iron === data.goals.iron &&
+          p.goals.calcium === data.goals.calcium
+        )
+        if (matchingPreset) {
+          setSelectedPresetId(matchingPreset.id)
+        }
       }
     } catch (error) {
       console.error("Failed to load nutrition goals:", error)
@@ -136,7 +147,23 @@ export default function SettingsPage() {
 
   const resetNutritionGoals = async () => {
     setNutritionGoals(DEFAULT_DAILY_GOALS)
+    setSelectedPresetId("child-6-7")
     await saveNutritionGoals(DEFAULT_DAILY_GOALS)
+  }
+
+  const applyPreset = async (preset: NutritionPreset) => {
+    setNutritionGoals(preset.goals)
+    setSelectedPresetId(preset.id)
+    await saveNutritionGoals(preset.goals)
+  }
+
+  // 現在の目標値に最も近いプリセットを見つける
+  const findMatchingPreset = (goals: typeof DEFAULT_DAILY_GOALS) => {
+    return nutritionPresets.find((p) =>
+      p.goals.protein === goals.protein &&
+      p.goals.iron === goals.iron &&
+      p.goals.calcium === goals.calcium
+    )
   }
 
   const updateNutritionGoal = (key: keyof typeof DEFAULT_DAILY_GOALS, value: number) => {
@@ -386,12 +413,72 @@ export default function SettingsPage() {
               )}
             </CardTitle>
             <CardDescription>
-              お子様に合わせて栄養目標をカスタマイズできます
+              年齢に合わせてプリセットを選ぶか、カスタマイズできます
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* 栄養素入力 */}
-            <div className="grid gap-4">
+          <CardContent className="space-y-6">
+            {/* 年齢別プリセット */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">年齢で選ぶ</h4>
+
+              {/* 子供プリセット */}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  {presetsByCategory.children.emoji} {presetsByCategory.children.label}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {presetsByCategory.children.presets.map((preset) => (
+                    <Button
+                      key={preset.id}
+                      variant={selectedPresetId === preset.id ? "default" : "outline"}
+                      size="sm"
+                      className={`h-auto py-2 px-3 text-left justify-start ${
+                        selectedPresetId === preset.id ? "ring-2 ring-green-500" : ""
+                      }`}
+                      onClick={() => applyPreset(preset)}
+                      disabled={isSavingGoals}
+                    >
+                      <span className="text-base mr-2">{preset.emoji}</span>
+                      <span className="text-xs leading-tight">{preset.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 大人プリセット */}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  {presetsByCategory.adult.emoji} {presetsByCategory.adult.label}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {presetsByCategory.adult.presets.map((preset) => (
+                    <Button
+                      key={preset.id}
+                      variant={selectedPresetId === preset.id ? "default" : "outline"}
+                      size="sm"
+                      className={`h-auto py-2 px-3 text-left justify-start ${
+                        selectedPresetId === preset.id ? "ring-2 ring-green-500" : ""
+                      }`}
+                      onClick={() => applyPreset(preset)}
+                      disabled={isSavingGoals}
+                    >
+                      <span className="text-base mr-2">{preset.emoji}</span>
+                      <span className="text-xs leading-tight">{preset.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 詳細設定（折りたたみ可能） */}
+            <details className="group">
+              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
+                <span className="text-xs transform transition-transform group-open:rotate-90">▶</span>
+                詳細をカスタマイズ
+              </summary>
+
+              {/* 栄養素入力 */}
+              <div className="grid gap-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium flex items-center gap-1 mb-1">
@@ -471,24 +558,20 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
-            </div>
+              </div>
+            </details>
 
-            {/* リセットボタン */}
-            <div className="pt-2 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetNutritionGoals}
-                disabled={isSavingGoals}
-                className="w-full"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                デフォルトに戻す
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                デフォルト: 6〜7歳児の推奨栄養量（日本人の食事摂取基準）
-              </p>
-            </div>
+            {/* 選択中のプリセット情報 */}
+            {selectedPresetId && (
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-green-800">
+                  {(() => {
+                    const preset = nutritionPresets.find(p => p.id === selectedPresetId)
+                    return preset ? `${preset.emoji} ${preset.label}の推奨値を使用中` : ""
+                  })()}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

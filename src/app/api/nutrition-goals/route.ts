@@ -1,18 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { getDefaultGoals } from "@/lib/nutrition-presets"
 
 export const dynamic = "force-dynamic"
 
-// 子どもの1日あたりの推奨栄養素（6〜7歳を基準）
-export const DEFAULT_DAILY_GOALS = {
-  protein: 35,        // g - たんぱく質
-  iron: 6.5,          // mg - 鉄分
-  calcium: 600,       // mg - カルシウム
-  vitaminA: 400,      // μg - ビタミンA
-  vitaminC: 55,       // mg - ビタミンC
-  fiber: 11,          // g - 食物繊維
-  energy: 1400,       // kcal - エネルギー
-}
+// デフォルト目標をプリセットから取得
+const DEFAULT_DAILY_GOALS = getDefaultGoals()
 
 // 栄養目標を取得
 export async function GET() {
