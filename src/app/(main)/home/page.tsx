@@ -1,24 +1,39 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import ProductScanner from "@/components/features/products/product-scanner"
-import ProductCard from "@/components/features/products/product-card"
-import RecipeGenerator from "@/components/features/recipes/recipe-generator"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import NutritionDashboard from "@/components/features/nutrition/nutrition-dashboard"
-import { Package, Sparkles, ShoppingBag, ChefHat, Heart, Calendar, Check, Sun } from "lucide-react"
-import { ProductCardSkeleton, RecipeCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
+import {
+  Calendar,
+  ChefHat,
+  Heart,
+  Check,
+  Sun,
+  Moon,
+  CloudSun,
+  ShoppingBag,
+  Sparkles,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  LogOut,
+} from "lucide-react"
+import { FullPageLoader } from "@/components/ui/skeleton"
 
 export default function HomePage() {
   const router = useRouter()
   const { user, setUser, isLoading, setIsLoading } = useAuthStore()
   const supabase = createClient()
-  const [products, setProducts] = useState<any[]>([])
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [recentRecipes, setRecentRecipes] = useState<any[]>([])
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true)
   const [familyPreferences, setFamilyPreferences] = useState<any[]>([])
@@ -28,7 +43,8 @@ export default function HomePage() {
     protein: 0, iron: 0, calcium: 0, vitaminA: 0, vitaminC: 0, fiber: 0
   })
   const [isLoadingNutrition, setIsLoadingNutrition] = useState(true)
-  const productsListRef = useRef<HTMLDivElement>(null)
+  const [isNutritionOpen, setIsNutritionOpen] = useState(false)
+  const [productCount, setProductCount] = useState(0)
 
   useEffect(() => {
     const checkUser = async () => {
@@ -39,11 +55,11 @@ export default function HomePage() {
       if (!user) {
         router.push("/login")
       } else {
-        fetchProducts()
         fetchRecentRecipes()
         fetchFamilyPreferences()
         fetchTodayMeals()
         fetchWeeklyNutrition()
+        fetchProductCount()
       }
     }
 
@@ -58,17 +74,15 @@ export default function HomePage() {
     return () => subscription.unsubscribe()
   }, [supabase, setUser, setIsLoading, router])
 
-  const fetchProducts = async () => {
+  const fetchProductCount = async () => {
     try {
       const response = await fetch("/api/products")
       if (response.ok) {
         const data = await response.json()
-        setProducts(data)
+        setProductCount(data.length)
       }
     } catch (error) {
       console.error("Failed to fetch products:", error)
-    } finally {
-      setIsLoadingProducts(false)
     }
   }
 
@@ -77,7 +91,7 @@ export default function HomePage() {
       const response = await fetch("/api/recipes")
       if (response.ok) {
         const data = await response.json()
-        setRecentRecipes(data.recipes.slice(0, 3)) // 最新3件のみ
+        setRecentRecipes(data.recipes.slice(0, 6))
       }
     } catch (error) {
       console.error("Failed to fetch recipes:", error)
@@ -88,20 +102,17 @@ export default function HomePage() {
 
   const fetchFamilyPreferences = async () => {
     try {
-      // 家族を取得
       const familyRes = await fetch("/api/families")
       if (!familyRes.ok) return
 
       const families = await familyRes.json()
       if (families.length === 0) return
 
-      // メンバーを取得
       const membersRes = await fetch(`/api/members?family_id=${families[0].id}`)
       if (!membersRes.ok) return
 
       const members = await membersRes.json()
 
-      // 各メンバーの食べ物好き嫌いを取得
       const allPreferences: any[] = []
       for (const member of members) {
         const foodsRes = await fetch(`/api/members/${member.id}/foods`)
@@ -142,7 +153,6 @@ export default function HomePage() {
 
   const fetchWeeklyNutrition = async () => {
     try {
-      // 今週の月曜日から日曜日までの範囲を計算
       const today = new Date()
       const dayOfWeek = today.getDay()
       const monday = new Date(today)
@@ -167,12 +177,12 @@ export default function HomePage() {
     }
   }
 
-  // 挨拶メッセージを時間帯で変更
+  // 挨拶メッセージとアイコンを時間帯で変更
   const getGreeting = () => {
     const hour = new Date().getHours()
-    if (hour < 12) return "おはようございます"
-    if (hour < 18) return "こんにちは"
-    return "こんばんは"
+    if (hour < 12) return { text: "おはようございます", icon: Sun }
+    if (hour < 18) return { text: "こんにちは", icon: CloudSun }
+    return { text: "こんばんは", icon: Moon }
   }
 
   // 食事タイプのラベル
@@ -192,22 +202,11 @@ export default function HomePage() {
     return order.indexOf(a.mealType) - order.indexOf(b.mealType)
   })
 
-  const handleScanComplete = (product: any) => {
-    setProducts([product, ...products])
-    // 商品一覧にスクロール
-    setTimeout(() => {
-      productsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    }, 100)
-  }
-
-  const handleDeleteProduct = (id: string) => {
-    setProducts(products.filter((p) => p.id !== id))
-  }
-
-  const handleUpdateProduct = (updatedProduct: any) => {
-    setProducts(products.map((p) =>
-      p.id === updatedProduct.id ? updatedProduct : p
-    ))
+  // 今日の日付フォーマット
+  const getFormattedDate = () => {
+    const today = new Date()
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"]
+    return `${today.getMonth() + 1}月${today.getDate()}日（${weekdays[today.getDay()]}）`
   }
 
   const handleLogout = async () => {
@@ -215,46 +214,75 @@ export default function HomePage() {
     router.push("/login")
   }
 
+  const greeting = getGreeting()
+  const GreetingIcon = greeting.icon
+
   if (isLoading) {
     return <FullPageLoader />
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6 py-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Yamtune</h1>
-          <Button variant="outline" onClick={handleLogout}>
-            ログアウト
-          </Button>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 pb-24">
+      {/* ヘッダー */}
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+            Yamtune
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/settings")}
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
+      </div>
 
-        {/* 今日の挨拶と献立 */}
+      <div className="max-w-lg mx-auto p-4 space-y-4">
+        {/* 挨拶カード */}
         <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Sun className="w-5 h-5 text-amber-500" />
-              <CardTitle className="text-lg">{getGreeting()}</CardTitle>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                <GreetingIcon className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-lg font-medium">{greeting.text}</p>
+                <p className="text-sm text-muted-foreground">{getFormattedDate()}</p>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium">今日の献立</h3>
+          </CardContent>
+        </Card>
+
+        {/* 今日の献立 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-amber-500" />
+                今日の献立
+              </CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push("/calendar")}
-                className="text-amber-700 hover:text-amber-800"
+                className="text-xs"
               >
-                <Calendar className="w-4 h-4 mr-1" />
-                カレンダー
+                カレンダー →
               </Button>
             </div>
-
+          </CardHeader>
+          <CardContent className="pb-4">
             {isLoadingMeals ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-10 bg-amber-100 rounded animate-pulse" />
+                  <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
                 ))}
               </div>
             ) : sortedTodayMeals.length > 0 ? (
@@ -264,140 +292,75 @@ export default function HomePage() {
                   return (
                     <div
                       key={meal.id}
-                      className={`flex items-center gap-3 p-2 rounded-lg ${
-                        meal.isCompleted ? "bg-green-100" : "bg-white"
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                        meal.isCompleted ? "bg-green-50" : "bg-gray-50"
                       }`}
+                      onClick={() => meal.recipe && router.push(`/recipes/${meal.recipe.id}`)}
                     >
-                      <span className="text-lg">{mealInfo.emoji}</span>
-                      <span className="text-sm font-medium w-12">{mealInfo.label}</span>
+                      <span className="text-xl">{mealInfo.emoji}</span>
+                      <span className="text-sm font-medium w-10">{mealInfo.label}</span>
                       <span className="flex-1 text-sm truncate">
                         {meal.recipe?.title || "未設定"}
                       </span>
                       {meal.isCompleted && (
-                        <Check className="w-4 h-4 text-green-600" />
+                        <Check className="w-5 h-5 text-green-600" />
                       )}
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <div className="text-center py-4">
+              <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground mb-3">
-                  今日の献立がまだ設定されていません
+                  今日の献立がまだありません
                 </p>
                 <Button
                   size="sm"
                   onClick={() => router.push("/calendar")}
                   className="bg-amber-500 hover:bg-amber-600"
                 >
-                  献立を設定する
+                  <Plus className="w-4 h-4 mr-1" />
+                  献立を設定
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* 栄養バランストラッカー */}
-        {!isLoadingNutrition && (
-          <NutritionDashboard
-            weeklyNutrition={weeklyNutrition}
-            likedFoods={familyPreferences
-              .filter((p) => p.status === "like")
-              .map((p) => p.foodName)}
-          />
-        )}
-
-        {/* 登録済み商品一覧 */}
-        <div ref={productsListRef}>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <ShoppingBag className="w-6 h-6" />
-            登録済み商品
-            {!isLoadingProducts && products.length > 0 && (
-              <span className="text-sm text-muted-foreground font-normal">
-                ({products.length}件)
-              </span>
-            )}
-          </h2>
-
-          {isLoadingProducts ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <ProductCardSkeleton />
-              <ProductCardSkeleton />
-            </div>
-          ) : products.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onDelete={handleDeleteProduct}
-                  onUpdate={handleUpdateProduct}
-                  familyPreferences={familyPreferences}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Package className="w-16 h-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">まだ商品が登録されていません</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  下の「商品をスキャン」から商品を登録してみましょう
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* 商品スキャン */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Package className="w-6 h-6" />
-            商品をスキャン
-          </h2>
-          <ProductScanner onScanComplete={handleScanComplete} />
-        </div>
-
-        {/* 最近のレシピ */}
+        {/* 最近のレシピ（横スクロール） */}
         {recentRecipes.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <ChefHat className="w-6 h-6" />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <ChefHat className="w-5 h-5" />
                 最近のレシピ
               </h2>
               <Button
                 variant="ghost"
+                size="sm"
                 onClick={() => router.push("/recipes")}
-                className="text-sm"
+                className="text-xs"
               >
                 すべて見る →
               </Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory">
               {recentRecipes.map((recipe) => (
                 <Card
                   key={recipe.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className="flex-shrink-0 w-40 cursor-pointer hover:shadow-lg transition-shadow snap-start"
                   onClick={() => router.push(`/recipes/${recipe.id}`)}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base line-clamp-2">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <h3 className="text-sm font-medium line-clamp-2 flex-1">
                         {recipe.title}
-                      </CardTitle>
+                      </h3>
                       {recipe.isFavorite && (
-                        <Heart className="w-4 h-4 text-red-500 fill-current flex-shrink-0" />
+                        <Heart className="w-3 h-3 text-red-500 fill-current flex-shrink-0" />
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                      {recipe.description}
-                    </p>
                     <div className="flex gap-2 text-xs text-muted-foreground">
-                      <span>{recipe.servings}人分</span>
-                      <span>•</span>
                       <span>{recipe.cooking_time}分</span>
                       <span>•</span>
                       <span>{recipe.difficulty}</span>
@@ -409,64 +372,111 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* AIレシピ生成 */}
-        {products.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Sparkles className="w-6 h-6" />
-              AIレシピ生成
-            </h2>
+        {/* 栄養バランス（折りたたみ） */}
+        {!isLoadingNutrition && (
+          <Collapsible open={isNutritionOpen} onOpenChange={setIsNutritionOpen}>
             <Card>
-              <CardContent className="pt-6">
-                <RecipeGenerator products={products} />
-              </CardContent>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-purple-500" />
+                      今週の栄養バランス
+                    </CardTitle>
+                    {isNutritionOpen ? (
+                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <NutritionDashboard
+                    weeklyNutrition={weeklyNutrition}
+                    likedFoods={familyPreferences
+                      .filter((p) => p.status === "like")
+                      .map((p) => p.foodName)}
+                    compact
+                  />
+                </CardContent>
+              </CollapsibleContent>
             </Card>
-          </div>
+          </Collapsible>
         )}
 
-        {/* クイックアクション */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              クイックアクション
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <Button
-                variant="outline"
-                className="h-20"
-                onClick={() => router.push("/calendar")}
-              >
-                <Calendar className="w-5 h-5 mr-2" />
-                献立カレンダー
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20"
-                onClick={() => router.push("/recipes")}
-              >
-                <ChefHat className="w-5 h-5 mr-2" />
-                レシピを見る
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20"
-                onClick={() => router.push("/family")}
-              >
-                家族管理
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20"
-                onClick={() => router.push("/settings")}
-              >
-                設定
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* クイックステータス */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => router.push("/products")}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{productCount}</p>
+                <p className="text-xs text-muted-foreground">登録商品</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => router.push("/recipes")}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                <ChefHat className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{recentRecipes.length > 0 ? "+" : "0"}</p>
+                <p className="text-xs text-muted-foreground">レシピ</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* フローティングアクションバー */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+        <div className="max-w-lg mx-auto px-4 py-2">
+          <div className="grid grid-cols-4 gap-1">
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2"
+              onClick={() => router.push("/calendar")}
+            >
+              <Calendar className="w-5 h-5 text-amber-600" />
+              <span className="text-xs">献立</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2"
+              onClick={() => router.push("/products")}
+            >
+              <ShoppingBag className="w-5 h-5 text-blue-600" />
+              <span className="text-xs">商品</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2"
+              onClick={() => router.push("/recipes")}
+            >
+              <ChefHat className="w-5 h-5 text-orange-600" />
+              <span className="text-xs">レシピ</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2"
+              onClick={() => router.push("/family")}
+            >
+              <Heart className="w-5 h-5 text-pink-600" />
+              <span className="text-xs">家族</span>
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )

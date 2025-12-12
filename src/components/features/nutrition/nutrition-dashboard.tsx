@@ -24,6 +24,7 @@ interface NutritionDashboardProps {
   }
   memberName?: string
   likedFoods?: string[]
+  compact?: boolean
 }
 
 // 子どもの1日あたりの推奨栄養素（6〜7歳を基準）× 7日
@@ -50,6 +51,7 @@ export default function NutritionDashboard({
   weeklyNutrition,
   memberName = "お子さん",
   likedFoods = [],
+  compact = false,
 }: NutritionDashboardProps) {
   const nutrients: NutrientData[] = [
     {
@@ -136,6 +138,68 @@ export default function NutritionDashboard({
 
   const suggestion = getSuggestion()
 
+  const content = (
+    <div className="space-y-4">
+      {/* 栄養素プログレスバー */}
+      <div className={`grid ${compact ? "gap-2" : "gap-3"}`}>
+        {nutrients.map((nutrient) => {
+          const percentage = Math.min(
+            100,
+            Math.round((nutrient.current / nutrient.goal) * 100)
+          )
+          const isLow = percentage < 60
+          const isGood = percentage >= 80
+
+          return (
+            <div key={nutrient.name} className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1">
+                  <span>{nutrient.emoji}</span>
+                  <span className={isLow ? "text-amber-600 font-medium" : ""}>
+                    {nutrient.name}
+                  </span>
+                </span>
+                <span className={`text-xs ${isLow ? "text-amber-600" : "text-muted-foreground"}`}>
+                  {percentage}%
+                </span>
+              </div>
+              <Progress
+                value={percentage}
+                className={`h-2 ${
+                  isLow
+                    ? "[&>div]:bg-amber-500"
+                    : isGood
+                    ? "[&>div]:bg-green-500"
+                    : ""
+                }`}
+              />
+            </div>
+          )
+        })}
+      </div>
+
+      {/* AIからの提案 */}
+      <div
+        className={`p-3 rounded-lg flex items-start gap-3 ${
+          suggestion.type === "success"
+            ? "bg-green-50 border border-green-200"
+            : "bg-amber-50 border border-amber-200"
+        }`}
+      >
+        <Lightbulb
+          className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            suggestion.type === "success" ? "text-green-600" : "text-amber-600"
+          }`}
+        />
+        <p className="text-sm">{suggestion.message}</p>
+      </div>
+    </div>
+  )
+
+  if (compact) {
+    return content
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -144,61 +208,7 @@ export default function NutritionDashboard({
           今週の栄養バランス
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* 栄養素プログレスバー */}
-        <div className="grid gap-3">
-          {nutrients.map((nutrient) => {
-            const percentage = Math.min(
-              100,
-              Math.round((nutrient.current / nutrient.goal) * 100)
-            )
-            const isLow = percentage < 60
-            const isGood = percentage >= 80
-
-            return (
-              <div key={nutrient.name} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1">
-                    <span>{nutrient.emoji}</span>
-                    <span className={isLow ? "text-amber-600 font-medium" : ""}>
-                      {nutrient.name}
-                    </span>
-                  </span>
-                  <span className={`text-xs ${isLow ? "text-amber-600" : "text-muted-foreground"}`}>
-                    {percentage}%
-                  </span>
-                </div>
-                <Progress
-                  value={percentage}
-                  className={`h-2 ${
-                    isLow
-                      ? "[&>div]:bg-amber-500"
-                      : isGood
-                      ? "[&>div]:bg-green-500"
-                      : ""
-                  }`}
-                />
-              </div>
-            )
-          })}
-        </div>
-
-        {/* AIからの提案 */}
-        <div
-          className={`p-3 rounded-lg flex items-start gap-3 ${
-            suggestion.type === "success"
-              ? "bg-green-50 border border-green-200"
-              : "bg-amber-50 border border-amber-200"
-          }`}
-        >
-          <Lightbulb
-            className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-              suggestion.type === "success" ? "text-green-600" : "text-amber-600"
-            }`}
-          />
-          <p className="text-sm">{suggestion.message}</p>
-        </div>
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </Card>
   )
 }
