@@ -62,7 +62,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-amber-50 p-4">
       <div className="max-w-4xl mx-auto space-y-6 py-8">
         {/* ヘッダー */}
         <div className="flex items-center gap-4">

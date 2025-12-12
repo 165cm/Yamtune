@@ -27,6 +27,7 @@ import {
   ChevronUp,
   Plus,
   LogOut,
+  Flame,
 } from "lucide-react"
 import { FullPageLoader } from "@/components/ui/skeleton"
 
@@ -45,6 +46,7 @@ export default function HomePage() {
   const [isLoadingNutrition, setIsLoadingNutrition] = useState(true)
   const [isNutritionOpen, setIsNutritionOpen] = useState(false)
   const [productCount, setProductCount] = useState(0)
+  const [streak, setStreak] = useState(0)
 
   useEffect(() => {
     const checkUser = async () => {
@@ -60,6 +62,7 @@ export default function HomePage() {
         fetchTodayMeals()
         fetchWeeklyNutrition()
         fetchProductCount()
+        fetchStreak()
       }
     }
 
@@ -177,6 +180,68 @@ export default function HomePage() {
     }
   }
 
+  // ストリーク（連続達成日数）を計算
+  const fetchStreak = async () => {
+    try {
+      // 過去30日分の献立を取得
+      const endDate = new Date()
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - 30)
+
+      const response = await fetch(
+        `/api/meal-plans?start_date=${startDate.toISOString().split("T")[0]}&end_date=${endDate.toISOString().split("T")[0]}`
+      )
+      if (!response.ok) return
+
+      const data = await response.json()
+      const mealPlans = data.mealPlans || []
+
+      // 日付ごとに完了した食事があるかチェック
+      let currentStreak = 0
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      for (let i = 0; i <= 30; i++) {
+        const checkDate = new Date(today)
+        checkDate.setDate(today.getDate() - i)
+        const dateStr = checkDate.toISOString().split("T")[0]
+
+        const dayMeals = mealPlans.filter(
+          (m: any) => m.plannedDate === dateStr && m.isCompleted
+        )
+
+        if (dayMeals.length > 0) {
+          currentStreak++
+        } else if (i > 0) {
+          // 今日以外で途切れたらストップ
+          break
+        }
+      }
+
+      setStreak(currentStreak)
+    } catch (error) {
+      console.error("Failed to fetch streak:", error)
+    }
+  }
+
+  // 献立の完了を切り替え
+  const toggleMealComplete = async (mealId: string, currentStatus: boolean) => {
+    try {
+      const response = await fetch(`/api/meal-plans/${mealId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCompleted: !currentStatus }),
+      })
+      if (response.ok) {
+        fetchTodayMeals()
+        fetchStreak()
+        fetchWeeklyNutrition()
+      }
+    } catch (error) {
+      console.error("Failed to toggle meal completion:", error)
+    }
+  }
+
   // 挨拶メッセージとアイコンを時間帯で変更
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -245,17 +310,29 @@ export default function HomePage() {
       </div>
 
       <div className="max-w-lg mx-auto p-4 space-y-4">
-        {/* 挨拶カード */}
+        {/* 挨拶カード + ストリーク */}
         <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
           <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <GreetingIcon className="w-6 h-6 text-amber-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <GreetingIcon className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-lg font-medium">{greeting.text}</p>
+                  <p className="text-sm text-muted-foreground">{getFormattedDate()}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-medium">{greeting.text}</p>
-                <p className="text-sm text-muted-foreground">{getFormattedDate()}</p>
-              </div>
+              {/* ストリーク表示 */}
+              {streak > 0 && (
+                <div className="flex flex-col items-center bg-orange-100 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                    <span className="text-2xl font-bold text-orange-600">{streak}</span>
+                  </div>
+                  <span className="text-xs text-orange-600">日連続</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -292,18 +369,35 @@ export default function HomePage() {
                   return (
                     <div
                       key={meal.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
-                        meal.isCompleted ? "bg-green-50" : "bg-gray-50"
+                      className={`flex items-center gap-2 p-3 rounded-lg transition-all ${
+                        meal.isCompleted
+                          ? "bg-green-50 border border-green-200"
+                          : "bg-gray-50 border border-transparent"
                       }`}
-                      onClick={() => meal.recipe && router.push(`/recipes/${meal.recipe.id}`)}
                     >
                       <span className="text-xl">{mealInfo.emoji}</span>
                       <span className="text-sm font-medium w-10">{mealInfo.label}</span>
-                      <span className="flex-1 text-sm truncate">
-                        {meal.recipe?.title || "未設定"}
-                      </span>
-                      {meal.isCompleted && (
-                        <Check className="w-5 h-5 text-green-600" />
+                      <button
+                        className="flex-1 text-left"
+                        onClick={() => meal.recipe && router.push(`/recipes/${meal.recipe.id}`)}
+                      >
+                        <span className="text-sm truncate block">
+                          {meal.recipe?.title || "未設定"}
+                        </span>
+                      </button>
+                      {/* 完了ボタン */}
+                      {meal.recipe && (
+                        <button
+                          onClick={() => toggleMealComplete(meal.id, meal.isCompleted)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                            meal.isCompleted
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-200 text-gray-400 hover:bg-green-400 hover:text-white"
+                          }`}
+                          title={meal.isCompleted ? "完了を取り消す" : "完了にする"}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
                       )}
                     </div>
                   )
