@@ -66,18 +66,21 @@ export async function GET(request: Request) {
 
   mealPlans?.forEach((plan: any) => {
     if (plan.recipes?.nutrition) {
-      const nutrition = plan.recipes.nutrition
-      totals.protein += nutrition.protein || 0
-      totals.iron += nutrition.iron || 0
-      totals.calcium += nutrition.calcium || 0
-      totals.vitaminA += nutrition.vitamin_a || nutrition.vitaminA || 0
-      totals.vitaminC += nutrition.vitamin_c || nutrition.vitaminC || 0
-      totals.fiber += nutrition.fiber || nutrition.dietary_fiber || 0
-      totals.energy += nutrition.energy || nutrition.calories || 0
-      totals.fat += nutrition.fat || 0
-      totals.carbs += nutrition.carbs || nutrition.carbohydrates || 0
+      const n = plan.recipes.nutrition
+      // 複数のフィールド名パターンに対応
+      totals.protein += n.protein_g || n.protein || 0
+      totals.iron += n.iron_mg || n.iron || 0
+      totals.calcium += n.calcium_mg || n.calcium || 0
+      totals.vitaminA += n.vitamin_a_ug || n.vitamin_a || n.vitaminA || 0
+      totals.vitaminC += n.vitamin_c_mg || n.vitamin_c || n.vitaminC || 0
+      totals.fiber += n.dietary_fiber_g || n.fiber || n.dietary_fiber || 0
+      totals.energy += n.energy_kcal || n.energy || n.calories || 0
+      totals.fat += n.fat_g || n.fat || 0
+      totals.carbs += n.carbohydrate_g || n.carbs || n.carbohydrates || 0
     }
   })
+
+  console.log("Nutrition totals:", totals, "from", mealPlans?.length, "completed meals")
 
   return NextResponse.json({
     weeklyNutrition: totals,

@@ -134,7 +134,12 @@ ${pantryItems.length > 0 ? "- 上記の「家にある調味料」を積極的�
     "protein_g": たんぱく質（g）,
     "fat_g": 脂質（g）,
     "carbohydrate_g": 炭水化物（g）,
-    "salt_g": 食塩相当量（g）
+    "salt_g": 食塩相当量（g）,
+    "iron_mg": 鉄分（mg）,
+    "calcium_mg": カルシウム（mg）,
+    "vitamin_a_ug": ビタミンA（μg）,
+    "vitamin_c_mg": ビタミンC（mg）,
+    "dietary_fiber_g": 食物繊維（g）
   },
   "tips": "調理のコツや栄養のポイント"
 }`
