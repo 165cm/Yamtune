@@ -20,6 +20,8 @@ import {
   CheckSquare,
   Square,
   X,
+  Plus,
+  Sparkles,
 } from "lucide-react"
 import { RecipeCardSkeleton } from "@/components/ui/skeleton"
 
@@ -228,6 +230,26 @@ export default function RecipesPage() {
         </div>
       ) : recipes.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* 新しいレシピを作るカード（選択モード時は非表示） */}
+          {!isSelectionMode && (
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all border-2 border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50"
+              onClick={() => router.push("/products?action=generate")}
+            >
+              <CardContent className="flex flex-col items-center justify-center h-full min-h-[200px] py-8">
+                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+                  <Plus className="w-8 h-8 text-orange-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-orange-700 mb-1">
+                  新しいレシピを作る
+                </h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  <Sparkles className="w-4 h-4 inline mr-1" />
+                  AIが自動生成
+                </p>
+              </CardContent>
+            </Card>
+          )}
           {recipes.map((recipe) => (
             <Card
               key={recipe.id}

@@ -1,24 +1,29 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import ProductScanner from "@/components/features/products/product-scanner"
 import ProductCard from "@/components/features/products/product-card"
-import { Package, ArrowLeft, Plus, X } from "lucide-react"
+import RecipeGenerator from "@/components/features/recipes/recipe-generator"
+import { Package, ArrowLeft, Plus, X, ChefHat } from "lucide-react"
 import { ProductCardSkeleton, FullPageLoader } from "@/components/ui/skeleton"
 
 export default function ProductsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, setUser, isLoading, setIsLoading } = useAuthStore()
   const supabase = createClient()
   const [products, setProducts] = useState<any[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [familyPreferences, setFamilyPreferences] = useState<any[]>([])
   const [showScanner, setShowScanner] = useState(false)
+
+  // URLパラメータでアクションを確認
+  const actionParam = searchParams.get("action")
 
   useEffect(() => {
     const checkUser = async () => {
@@ -152,6 +157,20 @@ export default function ProductsPage() {
           <Card className="border-2 border-dashed border-primary">
             <CardContent className="pt-6">
               <ProductScanner onScanComplete={handleScanComplete} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* レシピ生成ボタン（商品がある場合） */}
+        {!isLoadingProducts && products.length > 0 && (
+          <Card className={`${actionParam === "generate" ? "border-2 border-orange-300 bg-orange-50" : ""}`}>
+            <CardContent className="py-4">
+              {actionParam === "generate" && (
+                <p className="text-sm text-orange-700 mb-3 text-center">
+                  下の商品から使いたいものを選んでレシピを作りましょう！
+                </p>
+              )}
+              <RecipeGenerator products={products} />
             </CardContent>
           </Card>
         )}

@@ -500,6 +500,23 @@ export default function HomePage() {
           </Collapsible>
         )}
 
+        {/* レシピを作るボタン */}
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200"
+          onClick={() => router.push("/products?action=generate")}
+        >
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-orange-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-orange-700">AIでレシピを作る</p>
+              <p className="text-xs text-muted-foreground">商品を選んで自動生成</p>
+            </div>
+            <ChefHat className="w-6 h-6 text-orange-400" />
+          </CardContent>
+        </Card>
+
         {/* クイックステータス */}
         <div className="grid grid-cols-2 gap-3">
           <Card
