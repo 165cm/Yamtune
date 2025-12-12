@@ -9,7 +9,8 @@ import { pantryPresets } from "@/lib/food-presets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag, Loader2, Plus, X } from "lucide-react"
+import { ArrowLeft, User, LogOut, Trash2, Users, ChefHat, ShoppingBag, Loader2, Plus, X, Activity, RotateCcw } from "lucide-react"
+import { DEFAULT_DAILY_GOALS } from "@/components/features/nutrition/nutrition-dashboard"
 import { Input } from "@/components/ui/input"
 import { FullPageLoader } from "@/components/ui/skeleton"
 import {
@@ -36,6 +37,8 @@ export default function SettingsPage() {
   const [pantryItems, setPantryItems] = useState<string[]>([])
   const [isSavingPantry, setIsSavingPantry] = useState(false)
   const [newPantryItem, setNewPantryItem] = useState("")
+  const [nutritionGoals, setNutritionGoals] = useState(DEFAULT_DAILY_GOALS)
+  const [isSavingGoals, setIsSavingGoals] = useState(false)
 
   const loadPantryItems = useCallback(async () => {
     try {
@@ -98,6 +101,49 @@ export default function SettingsPage() {
     savePantryItems(newItems)
   }
 
+  const loadNutritionGoals = useCallback(async () => {
+    try {
+      const response = await fetch("/api/nutrition-goals")
+      if (response.ok) {
+        const data = await response.json()
+        setNutritionGoals(data.goals)
+      }
+    } catch (error) {
+      console.error("Failed to load nutrition goals:", error)
+    }
+  }, [])
+
+  const saveNutritionGoals = async (goals: typeof DEFAULT_DAILY_GOALS) => {
+    setIsSavingGoals(true)
+    try {
+      const response = await fetch("/api/nutrition-goals", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goals }),
+      })
+      if (response.ok) {
+        toast.success("栄養目標を保存しました")
+      } else {
+        toast.error("保存に失敗しました")
+      }
+    } catch (error) {
+      console.error("Failed to save nutrition goals:", error)
+      toast.error("保存に失敗しました")
+    } finally {
+      setIsSavingGoals(false)
+    }
+  }
+
+  const resetNutritionGoals = async () => {
+    setNutritionGoals(DEFAULT_DAILY_GOALS)
+    await saveNutritionGoals(DEFAULT_DAILY_GOALS)
+  }
+
+  const updateNutritionGoal = (key: keyof typeof DEFAULT_DAILY_GOALS, value: number) => {
+    const newGoals = { ...nutritionGoals, [key]: value }
+    setNutritionGoals(newGoals)
+  }
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -106,12 +152,12 @@ export default function SettingsPage() {
         return
       }
       setUser(user)
-      await Promise.all([loadStats(), loadPantryItems()])
+      await Promise.all([loadStats(), loadPantryItems(), loadNutritionGoals()])
       setIsLoading(false)
     }
 
     checkAuth()
-  }, [router, setUser, supabase, loadPantryItems])
+  }, [router, setUser, supabase, loadPantryItems, loadNutritionGoals])
 
   const loadStats = async () => {
     try {
@@ -173,7 +219,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-amber-50 p-4">
       <div className="max-w-4xl mx-auto space-y-6 py-8">
         <div className="flex items-center gap-4">
           <Button
@@ -325,6 +371,123 @@ export default function SettingsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 栄養目標 */}
+        <Card id="nutrition-goals">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              1日の栄養目標
+              {isSavingGoals && (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </CardTitle>
+            <CardDescription>
+              お子様に合わせて栄養目標をカスタマイズできます
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 栄養素入力 */}
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    🥩 たんぱく質（g）
+                  </label>
+                  <Input
+                    type="number"
+                    value={nutritionGoals.protein}
+                    onChange={(e) => updateNutritionGoal("protein", Number(e.target.value))}
+                    onBlur={() => saveNutritionGoals(nutritionGoals)}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    🩸 鉄分（mg）
+                  </label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={nutritionGoals.iron}
+                    onChange={(e) => updateNutritionGoal("iron", Number(e.target.value))}
+                    onBlur={() => saveNutritionGoals(nutritionGoals)}
+                    min={0}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    🦴 カルシウム（mg）
+                  </label>
+                  <Input
+                    type="number"
+                    value={nutritionGoals.calcium}
+                    onChange={(e) => updateNutritionGoal("calcium", Number(e.target.value))}
+                    onBlur={() => saveNutritionGoals(nutritionGoals)}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    👀 ビタミンA（μg）
+                  </label>
+                  <Input
+                    type="number"
+                    value={nutritionGoals.vitaminA}
+                    onChange={(e) => updateNutritionGoal("vitaminA", Number(e.target.value))}
+                    onBlur={() => saveNutritionGoals(nutritionGoals)}
+                    min={0}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    🍊 ビタミンC（mg）
+                  </label>
+                  <Input
+                    type="number"
+                    value={nutritionGoals.vitaminC}
+                    onChange={(e) => updateNutritionGoal("vitaminC", Number(e.target.value))}
+                    onBlur={() => saveNutritionGoals(nutritionGoals)}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    🥬 食物繊維（g）
+                  </label>
+                  <Input
+                    type="number"
+                    value={nutritionGoals.fiber}
+                    onChange={(e) => updateNutritionGoal("fiber", Number(e.target.value))}
+                    onBlur={() => saveNutritionGoals(nutritionGoals)}
+                    min={0}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* リセットボタン */}
+            <div className="pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetNutritionGoals}
+                disabled={isSavingGoals}
+                className="w-full"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                デフォルトに戻す
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                デフォルト: 6〜7歳児の推奨栄養量（日本人の食事摂取基準）
+              </p>
             </div>
           </CardContent>
         </Card>

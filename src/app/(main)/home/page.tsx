@@ -11,7 +11,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import NutritionDashboard from "@/components/features/nutrition/nutrition-dashboard"
+import { DailyNutritionDashboard, DEFAULT_DAILY_GOALS } from "@/components/features/nutrition/nutrition-dashboard"
 import {
   Calendar,
   ChefHat,
@@ -40,11 +40,12 @@ export default function HomePage() {
   const [familyPreferences, setFamilyPreferences] = useState<any[]>([])
   const [todayMeals, setTodayMeals] = useState<any[]>([])
   const [isLoadingMeals, setIsLoadingMeals] = useState(true)
-  const [weeklyNutrition, setWeeklyNutrition] = useState({
+  const [todayNutrition, setTodayNutrition] = useState({
     protein: 0, iron: 0, calcium: 0, vitaminA: 0, vitaminC: 0, fiber: 0
   })
+  const [nutritionGoals, setNutritionGoals] = useState(DEFAULT_DAILY_GOALS)
   const [isLoadingNutrition, setIsLoadingNutrition] = useState(true)
-  const [isNutritionOpen, setIsNutritionOpen] = useState(false)
+  const [isNutritionOpen, setIsNutritionOpen] = useState(true) // デフォルトで開く
   const [productCount, setProductCount] = useState(0)
   const [streak, setStreak] = useState(0)
 
@@ -60,7 +61,8 @@ export default function HomePage() {
         fetchRecentRecipes()
         fetchFamilyPreferences()
         fetchTodayMeals()
-        fetchWeeklyNutrition()
+        fetchTodayNutrition()
+        fetchNutritionGoals()
         fetchProductCount()
         fetchStreak()
       }
@@ -154,29 +156,33 @@ export default function HomePage() {
     }
   }
 
-  const fetchWeeklyNutrition = async () => {
+  const fetchTodayNutrition = async () => {
     try {
-      const today = new Date()
-      const dayOfWeek = today.getDay()
-      const monday = new Date(today)
-      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-      const sunday = new Date(monday)
-      sunday.setDate(monday.getDate() + 6)
-
-      const startDate = monday.toISOString().split("T")[0]
-      const endDate = sunday.toISOString().split("T")[0]
+      const today = new Date().toISOString().split("T")[0]
 
       const response = await fetch(
-        `/api/nutrition?start_date=${startDate}&end_date=${endDate}`
+        `/api/nutrition?start_date=${today}&end_date=${today}`
       )
       if (response.ok) {
         const data = await response.json()
-        setWeeklyNutrition(data.weeklyNutrition)
+        setTodayNutrition(data.weeklyNutrition) // APIは同じ構造を返す
       }
     } catch (error) {
-      console.error("Failed to fetch weekly nutrition:", error)
+      console.error("Failed to fetch today nutrition:", error)
     } finally {
       setIsLoadingNutrition(false)
+    }
+  }
+
+  const fetchNutritionGoals = async () => {
+    try {
+      const response = await fetch("/api/nutrition-goals")
+      if (response.ok) {
+        const data = await response.json()
+        setNutritionGoals(data.goals)
+      }
+    } catch (error) {
+      console.error("Failed to fetch nutrition goals:", error)
     }
   }
 
@@ -235,7 +241,7 @@ export default function HomePage() {
       if (response.ok) {
         fetchTodayMeals()
         fetchStreak()
-        fetchWeeklyNutrition()
+        fetchTodayNutrition()
       }
     } catch (error) {
       console.error("Failed to toggle meal completion:", error)
@@ -466,7 +472,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 栄養バランス（折りたたみ） */}
+        {/* 今日の栄養バランス（折りたたみ可） */}
         {!isLoadingNutrition && (
           <Collapsible open={isNutritionOpen} onOpenChange={setIsNutritionOpen}>
             <Card>
@@ -474,8 +480,8 @@ export default function HomePage() {
                 <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-purple-500" />
-                      今週の栄養バランス
+                      <Sparkles className="w-5 h-5 text-green-500" />
+                      今日の栄養バランス
                     </CardTitle>
                     {isNutritionOpen ? (
                       <ChevronUp className="w-5 h-5 text-muted-foreground" />
@@ -487,12 +493,14 @@ export default function HomePage() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent className="pt-0">
-                  <NutritionDashboard
-                    weeklyNutrition={weeklyNutrition}
+                  <DailyNutritionDashboard
+                    nutrition={todayNutrition}
+                    goals={nutritionGoals}
                     likedFoods={familyPreferences
                       .filter((p) => p.status === "like")
                       .map((p) => p.foodName)}
                     compact
+                    showSettings
                   />
                 </CardContent>
               </CollapsibleContent>
