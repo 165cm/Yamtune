@@ -222,11 +222,11 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-amber-50 pb-24">
       {/* ヘッダー */}
       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-orange-500 bg-clip-text text-transparent">
             Yamtune
           </h1>
           <div className="flex items-center gap-2">
@@ -413,8 +413,8 @@ export default function HomePage() {
             onClick={() => router.push("/products")}
           >
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <ShoppingBag className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5 text-green-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{productCount}</p>
@@ -456,7 +456,7 @@ export default function HomePage() {
               className="flex flex-col items-center gap-1 h-auto py-2"
               onClick={() => router.push("/products")}
             >
-              <ShoppingBag className="w-5 h-5 text-blue-600" />
+              <ShoppingBag className="w-5 h-5 text-green-600" />
               <span className="text-xs">商品</span>
             </Button>
             <Button

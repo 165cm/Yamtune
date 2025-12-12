@@ -138,8 +138,18 @@ export default function NutritionDashboard({
 
   const suggestion = getSuggestion()
 
+  // すべての栄養素が0かどうかをチェック
+  const hasNoData = nutrients.every((n) => n.current === 0)
+
   const content = (
     <div className="space-y-4">
+      {hasNoData && (
+        <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-center">
+          <p className="text-sm text-muted-foreground">
+            献立を「完了」にすると栄養が記録されます
+          </p>
+        </div>
+      )}
       {/* 栄養素プログレスバー */}
       <div className={`grid ${compact ? "gap-2" : "gap-3"}`}>
         {nutrients.map((nutrient) => {

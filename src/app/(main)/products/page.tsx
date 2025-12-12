@@ -105,7 +105,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-amber-50">
       {/* ヘッダー */}
       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
