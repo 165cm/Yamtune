@@ -16,6 +16,10 @@ import {
   Filter,
   CookingPot,
   ArrowLeft,
+  Trash2,
+  CheckSquare,
+  Square,
+  X,
 } from "lucide-react"
 import { RecipeCardSkeleton } from "@/components/ui/skeleton"
 
@@ -42,6 +46,9 @@ export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchRecipes = useCallback(async () => {
     setIsLoading(true)
@@ -73,6 +80,56 @@ export default function RecipesPage() {
     }[difficulty] || "bg-gray-100 text-gray-800"
   }
 
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const selectAll = () => {
+    setSelectedIds(new Set(recipes.map((r) => r.id)))
+  }
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+
+    const confirmed = window.confirm(
+      `${selectedIds.size}件のレシピを削除しますか？\nこの操作は取り消せません。`
+    )
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch("/api/recipes/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeIds: Array.from(selectedIds) }),
+      })
+
+      if (!response.ok) throw new Error("Failed to delete recipes")
+
+      // 削除完了後、リストを更新
+      await fetchRecipes()
+      exitSelectionMode()
+    } catch (error) {
+      console.error("Error deleting recipes:", error)
+      alert("削除に失敗しました")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       {/* ヘッダー */}
@@ -100,15 +157,67 @@ export default function RecipesPage() {
           </div>
         </div>
 
-        <Button
-          variant={showFavoritesOnly ? "default" : "outline"}
-          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-          className="gap-2"
-        >
-          <Filter className="w-4 h-4" />
-          {showFavoritesOnly ? "すべて表示" : "お気に入りのみ"}
-        </Button>
+        {isSelectionMode ? (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={selectAll}
+              className="gap-1"
+            >
+              <CheckSquare className="w-4 h-4" />
+              全選択
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exitSelectionMode}
+              className="gap-1"
+            >
+              <X className="w-4 h-4" />
+              キャンセル
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsSelectionMode(true)}
+              className="gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              選択削除
+            </Button>
+            <Button
+              variant={showFavoritesOnly ? "default" : "outline"}
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className="gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              {showFavoritesOnly ? "すべて表示" : "お気に入りのみ"}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* 選択モード時のアクションバー */}
+      {isSelectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-20 left-0 right-0 z-50 px-4">
+          <div className="bg-red-500 text-white rounded-lg p-4 shadow-lg flex items-center justify-between max-w-md mx-auto">
+            <span className="font-medium">{selectedIds.size}件選択中</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              {isDeleting ? "削除中..." : "削除する"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* レシピリスト */}
       {isLoading ? (
@@ -122,15 +231,34 @@ export default function RecipesPage() {
           {recipes.map((recipe) => (
             <Card
               key={recipe.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => router.push(`/recipes/${recipe.id}`)}
+              className={`cursor-pointer hover:shadow-lg transition-all ${
+                isSelectionMode && selectedIds.has(recipe.id)
+                  ? "ring-2 ring-red-500 bg-red-50"
+                  : ""
+              }`}
+              onClick={() => {
+                if (isSelectionMode) {
+                  toggleSelection(recipe.id)
+                } else {
+                  router.push(`/recipes/${recipe.id}`)
+                }
+              }}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg line-clamp-2">
+                  {isSelectionMode && (
+                    <div className="flex-shrink-0">
+                      {selectedIds.has(recipe.id) ? (
+                        <CheckSquare className="w-5 h-5 text-red-500" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                  )}
+                  <CardTitle className="text-lg line-clamp-2 flex-1">
                     {recipe.title}
                   </CardTitle>
-                  {recipe.isFavorite && (
+                  {!isSelectionMode && recipe.isFavorite && (
                     <Heart className="w-5 h-5 text-red-500 fill-current flex-shrink-0" />
                   )}
                 </div>
