@@ -44,6 +44,7 @@ export default function HomePage() {
     protein: 0, iron: 0, calcium: 0, vitaminA: 0, vitaminC: 0, fiber: 0
   })
   const [nutritionGoals, setNutritionGoals] = useState(DEFAULT_DAILY_GOALS)
+  const [familyMemberCount, setFamilyMemberCount] = useState(0)
   const [isLoadingNutrition, setIsLoadingNutrition] = useState(true)
   const [isNutritionOpen, setIsNutritionOpen] = useState(true) // デフォルトで開く
   const [productCount, setProductCount] = useState(0)
@@ -176,10 +177,12 @@ export default function HomePage() {
 
   const fetchNutritionGoals = async () => {
     try {
-      const response = await fetch("/api/nutrition-goals")
+      // 家族全員の合計栄養目標を取得
+      const response = await fetch("/api/nutrition-goals/family")
       if (response.ok) {
         const data = await response.json()
         setNutritionGoals(data.goals)
+        setFamilyMemberCount(data.memberCount)
       }
     } catch (error) {
       console.error("Failed to fetch nutrition goals:", error)
@@ -482,6 +485,11 @@ export default function HomePage() {
                     <CardTitle className="text-base flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-green-500" />
                       今日の栄養バランス
+                      {familyMemberCount > 0 && (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          （{familyMemberCount}人分）
+                        </span>
+                      )}
                     </CardTitle>
                     {isNutritionOpen ? (
                       <ChevronUp className="w-5 h-5 text-muted-foreground" />

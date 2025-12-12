@@ -65,6 +65,10 @@ export default function FamilyPage() {
     setMembers(members.filter((m) => m.id !== memberId))
   }
 
+  const handleMemberUpdated = (updatedMember: Member) => {
+    setMembers(members.map((m) => m.id === updatedMember.id ? updatedMember : m))
+  }
+
   if (isLoading) {
     return <FullPageLoader />
   }
@@ -116,6 +120,7 @@ export default function FamilyPage() {
                     key={member.id}
                     member={member}
                     onDelete={handleMemberDeleted}
+                    onUpdate={handleMemberUpdated}
                   />
                 ))}
               </div>

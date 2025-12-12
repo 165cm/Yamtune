@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from "react"
 import { toast } from "@/stores/toast-store"
 import { Member, MemberFood, FoodStatus } from "@/types"
 import { foodPresets, getFoodEmoji } from "@/lib/food-presets"
+import { nutritionPresets, getPresetById, getPresetByAge, calculateAge } from "@/lib/nutrition-presets"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Trash2, Calendar, Plus, X, Heart, ThumbsDown } from "lucide-react"
+import { Trash2, Calendar, Plus, X, Heart, ThumbsDown, Activity, ChevronDown } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -17,10 +18,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface MemberCardProps {
   member: Member
   onDelete: (memberId: string) => void
+  onUpdate?: (member: Member) => void
 }
 
 const statusConfig: Record<FoodStatus, { label: string; color: string; emoji: string }> = {
@@ -29,7 +38,7 @@ const statusConfig: Record<FoodStatus, { label: string; color: string; emoji: st
   neutral: { label: "普通", color: "bg-gray-100 text-gray-800 border-gray-200", emoji: "😐" },
 }
 
-export default function MemberCard({ member, onDelete }: MemberCardProps) {
+export default function MemberCard({ member, onDelete, onUpdate }: MemberCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [foods, setFoods] = useState<MemberFood[]>([])
@@ -38,6 +47,15 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
   const [newFoodName, setNewFoodName] = useState("")
   const [newFoodStatus, setNewFoodStatus] = useState<FoodStatus>("dislike")
   const [isAddingFood, setIsAddingFood] = useState(false)
+  const [isSavingPreset, setIsSavingPreset] = useState(false)
+
+  // メンバーの年齢を計算
+  const memberAge = calculateAge(member.birth_date)
+
+  // 現在のプリセット（設定済みなら使用、なければ年齢から推測）
+  const currentPreset = member.nutrition_preset_id
+    ? getPresetById(member.nutrition_preset_id)
+    : getPresetByAge(memberAge)
 
   const loadFoods = useCallback(async () => {
     try {
@@ -57,15 +75,29 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
     loadFoods()
   }, [loadFoods])
 
-  const calculateAge = (birthDate: string) => {
-    const today = new Date()
-    const birth = new Date(birthDate)
-    let age = today.getFullYear() - birth.getFullYear()
-    const monthDiff = today.getMonth() - birth.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--
+  const updateNutritionPreset = async (presetId: string) => {
+    setIsSavingPreset(true)
+    try {
+      const response = await fetch(`/api/members/${member.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nutrition_preset_id: presetId }),
+      })
+
+      if (response.ok) {
+        const updatedMember = await response.json()
+        onUpdate?.(updatedMember)
+        const preset = getPresetById(presetId)
+        toast.success(`${preset?.emoji} ${preset?.label}に設定しました`)
+      } else {
+        toast.error("設定の保存に失敗しました")
+      }
+    } catch (error) {
+      console.error("Failed to update preset:", error)
+      toast.error("設定の保存に失敗しました")
+    } finally {
+      setIsSavingPreset(false)
     }
-    return age
   }
 
   const handleDelete = async () => {
@@ -169,9 +201,57 @@ export default function MemberCard({ member, onDelete }: MemberCardProps) {
         <CardHeader className="flex flex-row items-start justify-between space-y-0">
           <div>
             <CardTitle className="text-xl">{member.name}</CardTitle>
-            <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              <span>{calculateAge(member.birth_date)}歳</span>
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                <span>{memberAge}歳</span>
+              </div>
+              {/* 栄養プリセット選択 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    disabled={isSavingPreset}
+                  >
+                    <Activity className="w-3 h-3 mr-1" />
+                    {currentPreset?.emoji} {currentPreset?.label.split("（")[0]}
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <div className="px-2 py-1.5 text-sm font-semibold">栄養プリセット</div>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    👶 子供
+                  </div>
+                  {nutritionPresets.filter(p => p.category === "children").map((preset) => (
+                    <DropdownMenuItem
+                      key={preset.id}
+                      onClick={() => updateNutritionPreset(preset.id)}
+                      className={currentPreset?.id === preset.id ? "bg-green-50" : ""}
+                    >
+                      <span className="mr-2">{preset.emoji}</span>
+                      {preset.label}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    👨‍👩‍👧 大人
+                  </div>
+                  {nutritionPresets.filter(p => p.category === "adult").map((preset) => (
+                    <DropdownMenuItem
+                      key={preset.id}
+                      onClick={() => updateNutritionPreset(preset.id)}
+                      className={currentPreset?.id === preset.id ? "bg-green-50" : ""}
+                    >
+                      <span className="mr-2">{preset.emoji}</span>
+                      {preset.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <Button
