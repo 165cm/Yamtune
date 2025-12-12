@@ -18,7 +18,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, birth_date, avatar_url } = body
+    const { name, birth_date, avatar_url, nutrition_preset_id } = body
 
     // Verify member belongs to user's family
     const { data: member } = await supabase
@@ -37,6 +37,7 @@ export async function PUT(
         ...(name && { name }),
         ...(birth_date && { birth_date }),
         ...(avatar_url !== undefined && { avatar_url }),
+        ...(nutrition_preset_id !== undefined && { nutrition_preset_id }),
       })
       .eq("id", id)
       .select()

@@ -17,6 +17,7 @@ export interface Member {
   name: string
   birth_date: string
   avatar_url?: string
+  nutrition_preset_id?: string  // 年齢別栄養プリセットID
   created_at: string
 }
 

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { family_id, name, birth_date, avatar_url } = body
+    const { family_id, name, birth_date, avatar_url, nutrition_preset_id } = body
 
     if (!family_id || !name || !birth_date) {
       return NextResponse.json(
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         name,
         birth_date,
         avatar_url,
+        nutrition_preset_id,
       } as any)
       .select()
       .single()

@@ -209,3 +209,27 @@ export function getDefaultGoals(): NutritionGoals {
   const defaultPreset = getPresetById(DEFAULT_PRESET_ID)
   return defaultPreset?.goals || childrenPresets[2].goals
 }
+
+// 年齢から推奨プリセットを取得
+export function getPresetByAge(age: number): NutritionPreset {
+  if (age <= 2) return childrenPresets[0]       // 1〜2歳
+  if (age <= 5) return childrenPresets[1]       // 3〜5歳
+  if (age <= 7) return childrenPresets[2]       // 6〜7歳
+  if (age <= 9) return childrenPresets[3]       // 8〜9歳
+  if (age <= 11) return childrenPresets[4]      // 10〜11歳
+  if (age <= 14) return childrenPresets[5]      // 12〜14歳
+  // 15歳以上は大人として扱う（デフォルトは女性18-49）
+  return adultPresets[0]
+}
+
+// 誕生日から年齢を計算
+export function calculateAge(birthDate: string): number {
+  const today = new Date()
+  const birth = new Date(birthDate)
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age
+}
